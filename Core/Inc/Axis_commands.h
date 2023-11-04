@@ -14,7 +14,7 @@
 #include "G_code_reader.h"
 
 
-void axis_commands_init();
+void axis_commands_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e);
 void task_axis_control(void* param);
 void execute_G1(Possible_params* command);
 void execute_G21(Possible_params* command);

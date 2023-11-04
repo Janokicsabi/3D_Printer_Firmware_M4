@@ -37,17 +37,17 @@ private:
 	char params_string[MAX_PARAM_SIZE];
 	Possible_params params;
 
+	void invalidate_all_params();
+	bool is_instruction_comment(char* instruction);
+	bool is_instruction_empty(char* instruction);
+	int32_t find_instruction_end_char(char* instruction);
+
 public:
 	Command();
 	virtual ~Command();
 
 	void set_code_and_param_string(char* full_command_line);
 	void extract_params_from_command_string();
-	void invalidate_all_params();
-	void get_params_from_command_string();
-	int32_t find_instruction_end_char(char* instruction);
-	bool is_instruction_comment(char* instruction);
-	bool is_instruction_empty(char* instruction);
 	char* get_command_code();
 	Possible_params* get_params();
 };

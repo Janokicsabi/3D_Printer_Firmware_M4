@@ -8,7 +8,13 @@
 #include <Limit_switch.h>
 
 
-Limit_switch::Limit_switch(GPIO_TypeDef* switch_port = nullptr, uint32_t switch_pin = 0, Motor* motor = nullptr) {
+Limit_switch::Limit_switch() {
+	this->switch_port = nullptr;
+	this->switch_pin = 0;
+	this->motor = nullptr;
+}
+
+Limit_switch::Limit_switch(GPIO_TypeDef* switch_port, uint32_t switch_pin, Motor* motor) {
 	this->switch_port = switch_port;
 	this->switch_pin = switch_pin;
 	this->motor = motor;

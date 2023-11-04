@@ -23,6 +23,7 @@
 #include "thermistor.h"
 #include "G_code_reader.h"
 #include "Temp_controller.h"
+#include <cpp_callback_wrap.h>
 
 //Hardware pointers
 extern ADC_HandleTypeDef hadc1;
@@ -33,6 +34,8 @@ extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim8;
 
 //Hardware
 SD_card* sd_card;
@@ -79,12 +82,36 @@ void task_creator(void* param) {
 	init_thermistor(&hadc1, &hadc2);
 	//init_temperature_control(&htim1, TIM_CHANNEL_2);
 
-	//TODO TEST
-	//Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim3, TIM_CHANNEL_1, 8, false);
+	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
+	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 8, true);
+	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 8, false);
+	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 8, false);
+	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 16, false);
+	Motor* motors[] = {motor_X, motor_Y, motor_Z, motor_E};
 
-	char read_instruction[20] = "G1 Y-50.0 F1000\n";
-	//interpret_instruction(&last_instruction_separated);
-	int i = 0;
+	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, motor_X);
+	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, motor_Y);
+	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, motor_Z);
+	//TODO PARAMÉTEREKET ÁTÍRNI!!!
+	Axis* axis_X = new Axis(motor_X, limit_X, 30.0, 280.0, 2.0, 20, 0);
+	Axis* axis_Y = new Axis(motor_Y, limit_Y, 60.0, 240.0, 2.0, 20, 0);
+	Axis* axis_Z = new Axis(motor_Y, limit_Z, 0.0, 180.0, 2.0, 20, 0);
+	Axis* axis_E = new Axis(motor_E, nullptr, 0.0, 0.0, 2.0, 20, 0);
+	axis_commands_init(axis_X, axis_Y, axis_Z, axis_E);
+	init_cpp_callback_wrap((void**)motors);
+
+	//TODO TEST
+	char read_instruction[20] = "G1 Y-100.0 F1000\n";
+	Command* c = new Command();
+	Possible_params* p_p;
+	c->set_code_and_param_string(read_instruction);
+	c->extract_params_from_command_string();
+	p_p = c->get_params();
+	execute_G1(p_p);
+
+	while(1) {
+		//Stop here
+	}
 
 	//Tasks
 	xTaskCreate(task_temp_log, "TEMP_LOG_TASK", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);

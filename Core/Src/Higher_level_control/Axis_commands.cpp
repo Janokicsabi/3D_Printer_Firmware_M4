@@ -34,7 +34,7 @@ static Axis* axis_E;
 extern EventGroupHandle_t command_state;
 
 
-void axis_control_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e) {
+void axis_commands_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e) {
 	//TODO Átgondolni, hogy ez itt legyen-e
 	Motor::enable_motors();
 	current_feedrate = 0.0f;
@@ -109,35 +109,37 @@ void execute_axis_move_command(Possible_params* command) {
 	float current_z_pos = axis_Z->get_axis_pos();
 	float current_e_pos = axis_E->get_axis_pos();
 
-	float dx, dy, dz;
-	(command->x.is_param_valid) ? dx = (current_x_pos - command->x.param_value) : dx = 0.0f;
-	(command->y.is_param_valid) ? dy = (current_y_pos - command->y.param_value) : dy = 0.0f;
-	(command->z.is_param_valid) ? dz = (current_z_pos - command->z.param_value) : dz = 0.0f;
+	float dx, dy, dz, de;
+	(command->x.is_param_valid) ? dx = abs(command->x.param_value - current_x_pos) : dx = 0.0f;
+	(command->y.is_param_valid) ? dy = abs(command->y.param_value - current_y_pos) : dy = 0.0f;
+	(command->z.is_param_valid) ? dz = abs(command->z.param_value - current_z_pos) : dz = 0.0f;
+	(command->e.is_param_valid) ? de = abs(command->e.param_value - current_e_pos) : de = 0.0f;
 
 	if (command->f.is_param_valid) {
 		current_feedrate = command->f.param_value;
 	}
 
 	float end_eff_travel_dist = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+	//Move time in [min] (because feed rate is in [mm/min])
 	float move_time = end_eff_travel_dist / current_feedrate;
 
 	//bool is_feedrate_const = (prev_axis_parameters.f == new_axis_parameters.f);
 	bool is_feedrate_const = true;
 
 	if (command->x.is_param_valid) {
-		float move_speed_x = abs(command->x.param_value - current_x_pos) / move_time;
+		float move_speed_x = dx / move_time;
 		axis_X->control_axis(move_speed_x, command->x.param_value, is_feedrate_const);
 	}
 	if (command->y.is_param_valid) {
-		float move_speed_y = abs(command->y.param_value - current_y_pos) / move_time;
+		float move_speed_y = dy / move_time;
 		axis_Y->control_axis(move_speed_y, command->y.param_value, is_feedrate_const);
 	}
 	if (command->z.is_param_valid) {
-		float move_speed_z = abs(command->z.param_value - current_z_pos) / move_time;
+		float move_speed_z = dz / move_time;
 		axis_Z->control_axis(move_speed_z, command->z.param_value, is_feedrate_const);
 	}
 	if (command->e.is_param_valid) {
-		float move_speed_e = abs(command->e.param_value - current_e_pos) / move_time;
+		float move_speed_e = de / move_time;
 		axis_E->control_axis(move_speed_e, command->e.param_value, is_feedrate_const);
 	}
 }

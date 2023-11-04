@@ -21,7 +21,7 @@ private:
 
 	float pos_in_ws_frame;						//The position reladtive to workspace frame, 0 position is at the edge of the printing area
 	const float workspace_frame_offset;			//Distance from the limit switch position to the printing area 0 position
-	const float axis_endpoint_in_ws_frame;		//The maximum position on the axis
+	const float axis_length;					//The distance from motor possible endpoint to other in millimeter
 
 	const float axis_pitch;
 	const float pitch_num_in_one_rotation;

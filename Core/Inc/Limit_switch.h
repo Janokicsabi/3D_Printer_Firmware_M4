@@ -20,6 +20,7 @@ private:
 	Motor* motor;
 
 public:
+	Limit_switch();
 	Limit_switch(GPIO_TypeDef* switch_port, uint32_t switch_pin, Motor* motor);
 	virtual ~Limit_switch();
 

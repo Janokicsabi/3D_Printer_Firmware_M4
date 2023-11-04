@@ -12,15 +12,18 @@
 #include "main.h"
 
 #ifdef __cplusplus
-extern "C" void init_motor_timer_callback();
 extern "C" void cpp_wrap_motor_pwm_callback(TIM_HandleTypeDef *htim);
 extern "C" void cpp_wrap_motor_timer_callback(TIM_HandleTypeDef *htim);
 
 extern "C" void cpp_wrap_heater_pwm_callback(TIM_HandleTypeDef *htim);
 extern "C" void cpp_wrap_heater_timer_callback(TIM_HandleTypeDef *htim);
-
-
 #endif
+
+void init_cpp_callback_wrap(void** motors);
+void motor_pwm_callback(TIM_HandleTypeDef *htim);
+void motor_timer_callback(TIM_HandleTypeDef *htim);
+void heater_pwm_callback(TIM_HandleTypeDef *htim);
+void heater_timer_callback(TIM_HandleTypeDef *htim);
 
 
 #endif /* INC_CPP_CALLBACK_WRAP_H_ */

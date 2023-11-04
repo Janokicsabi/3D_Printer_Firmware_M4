@@ -20,6 +20,8 @@ Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef
 	this->timer_channel = timer_channel;
 	this->remaining_steps = 0;
 	this->microstep_devider = microstep_devider;
+	this->is_soft_pwm = is_soft_pwm;
+
 	this->feedrate_accel_time_diff = 0;
 	this->change_motor_dir_pin(0);
 	motor_state = xEventGroupCreate();
@@ -84,6 +86,7 @@ void Motor::change_motor_dir_pin(uint8_t new_dir) {
 //@brief	This function calculates the required time delay between steps,
 //			so the printer can move continuously with the required speed
 //@param	move_speed	The required travelling speed [mm/min]
+//TODO: Extrém figyelem arra, hogy a Timer period-ig el tud-e számolni a timer számlálója!!! Ha nem, akkor prescalert állítani kell!
 const uint32_t Motor::calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement) {
 	uint32_t timer_clk_freq = HAL_RCC_GetPCLK2Freq();	//[Hz]
 	float timer_freq = (float)timer_clk_freq / ((float)this->timer->Init.Prescaler + 1);
@@ -115,10 +118,12 @@ void Motor::motor_PWM_callback() {
 	HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
 }
 
+extern TIM_HandleTypeDef htim6;
+
 void Motor::motor_timer_callback() {
-	if (this->feedrate_accel_time_diff != 0) {
+	/*if (this->feedrate_accel_time_diff != 0) {
 		this->set_motor_timer_period(this->timer->Init.Period + this->feedrate_accel_time_diff);
-	}
+	}*/
 
 	if (this->is_soft_pwm) {
 		HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);

@@ -9,15 +9,15 @@
 #include <cmath>
 
 
-Axis::Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_endpoint,
+Axis::Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
 		const float axis_pitch, const float pitch_num_in_one_rotation, const uint8_t limit_switch_dir) :
-		workspace_frame_offset{workspace_frame_offset}, axis_endpoint_in_ws_frame{axis_endpoint}, axis_pitch{axis_pitch},
+		workspace_frame_offset{workspace_frame_offset}, axis_length{axis_length}, axis_pitch{axis_pitch},
 		pitch_num_in_one_rotation{pitch_num_in_one_rotation}, displacement_per_microstep {
 			(MOTOR_BASIC_STEP_DEGREE / FULL_ROTATION_DEGREE) * (1.0 / motor->get_microstep_devider()) * pitch_num_in_one_rotation * axis_pitch},
 		limit_switch_dir{limit_switch_dir} {
 	this->motor = motor;
 	this->limit_switch = limit_switch;
-	this->pos_in_ws_frame = 0;
+	this->pos_in_ws_frame = 0.0f;
 }
 
 Axis::~Axis() {
@@ -42,8 +42,8 @@ const uint8_t Axis::calculate_dir(float new_pos) {
 float Axis::saturate_position(float new_pos) {
 	uint8_t dir = calculate_dir(new_pos);
 	if (dir != limit_switch_dir) {
-		if (new_pos > axis_endpoint_in_ws_frame) {
-			new_pos = axis_endpoint_in_ws_frame;
+		if (new_pos > (axis_length - workspace_frame_offset)) {
+			new_pos = (axis_length - workspace_frame_offset);
 		} else if (new_pos < (0.0 - workspace_frame_offset)) {
 			new_pos = (0.0 - workspace_frame_offset);
 		}
@@ -100,8 +100,7 @@ void Axis::home_axis(float move_speed) {
 const bool Axis::is_position_changed(float new_pos) {
 	if (new_pos != this->pos_in_ws_frame) {
 		return true;
-	}
-	else {
+	} else {
 		return false;
 	}
 }
