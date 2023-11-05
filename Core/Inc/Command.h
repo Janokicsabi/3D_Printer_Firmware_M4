@@ -27,7 +27,7 @@ typedef struct {
 	Command_Param e;
 	Command_Param f;
 	Command_Param s;
-}Possible_params;
+}Command_struct;
 
 using namespace std;
 
@@ -35,7 +35,7 @@ using namespace std;
 class Command {
 private:
 	char params_string[MAX_PARAM_SIZE];
-	Possible_params params;
+	Command_struct params;
 
 	void invalidate_all_params();
 	bool is_instruction_comment(char* instruction);
@@ -46,10 +46,10 @@ public:
 	Command();
 	virtual ~Command();
 
-	void set_code_and_param_string(char* full_command_line);
+	bool set_code_and_param_string(char* full_command_line);
 	void extract_params_from_command_string();
 	char* get_command_code();
-	Possible_params* get_params();
+	Command_struct* get_params();
 };
 
 #endif /* SRC_COMMAND_H_ */

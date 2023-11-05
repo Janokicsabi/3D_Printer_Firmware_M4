@@ -14,6 +14,7 @@
 #include "task.h"
 #include "event_groups.h"
 #include "semphr.h"
+#include "timers.h"
 
 #define SECONDS_IN_A_MINUTE			60
 #define FULL_ROTATION_DEGREE		360.0f

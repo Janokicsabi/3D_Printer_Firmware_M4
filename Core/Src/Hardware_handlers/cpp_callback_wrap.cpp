@@ -11,7 +11,10 @@
 #include "task_creator.h"
 #include "Temp_controller.h"
 
+static Axis* callback_axes[NUM_OF_AXES];
 static Motor* callback_motors[NUM_OF_AXES];
+static Limit_switch* callback_limit_switches[NUM_OF_AXES];
+static uint16_t limit_switch_pins[NUM_OF_AXES];
 static TIM_HandleTypeDef* callback_timers[NUM_OF_AXES];
 static bool is_software_pwm[NUM_OF_AXES];
 
@@ -21,9 +24,12 @@ extern Temp_controller* bed_heater;
 static TIM_HandleTypeDef* bed_timer;
 
 
-void init_cpp_callback_wrap(void** motors) {
+void init_cpp_callback_wrap(void** axes) {
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
-		callback_motors[i] = (Motor*)motors[i];
+		callback_axes[i] = (Axis*)axes[i];
+		callback_motors[i] = callback_axes[i]->get_motor();
+		callback_limit_switches[i] = callback_axes[i]->get_limit_switch();
+		limit_switch_pins[i] = callback_limit_switches[i]->get_switch_pin();
 		callback_timers[i] = callback_motors[i]->get_timer();
 		is_software_pwm[i] = callback_motors[i]->get_is_soft_pwm();
 	}
@@ -79,8 +85,21 @@ void heater_timer_callback(TIM_HandleTypeDef *htim) {
 	if (htim == hotend_timer) {
 		hotend_heater->heater_pin_on();
 	}
-	if (htim == bed_timer) {
+	else if (htim == bed_timer) {
 		bed_heater->heater_pin_on();
+	}
+}
+
+void cpp_wrap_limit_switch_callback(uint16_t GPIO_Pin) {
+	limit_switch_callback(GPIO_Pin);
+}
+
+void limit_switch_callback(uint16_t GPIO_Pin) {
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (GPIO_Pin == limit_switch_pins[i]) {
+			callback_limit_switches[i]->switch_pressed_callback();
+			return;
+		}
 	}
 }
 

@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define SD_SPI_HANDLE	hspi1
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -85,10 +85,13 @@ void Error_Handler(void);
 #define DIR_E_GPIO_Port GPIOB
 #define LIMIT_Z_Pin GPIO_PIN_6
 #define LIMIT_Z_GPIO_Port GPIOC
+#define LIMIT_Z_EXTI_IRQn EXTI9_5_IRQn
 #define LIMIT_Y_Pin GPIO_PIN_7
 #define LIMIT_Y_GPIO_Port GPIOC
+#define LIMIT_Y_EXTI_IRQn EXTI9_5_IRQn
 #define LIMIT_X_Pin GPIO_PIN_8
 #define LIMIT_X_GPIO_Port GPIOC
+#define LIMIT_X_EXTI_IRQn EXTI9_5_IRQn
 #define BED_Pin GPIO_PIN_8
 #define BED_GPIO_Port GPIOA
 #define DIR_Z_Pin GPIO_PIN_15

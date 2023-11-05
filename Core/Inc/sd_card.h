@@ -20,12 +20,12 @@ private:
 public:
 	SD_card();
 	~SD_card();
-	void mount_sd_card();
-	void unmount_sd_card();
-	void get_free_sector_size();
-	void open_file(const char* file_name);
-	void close_file();
-	void read_one_line(char* file_content, uint32_t buff_len);
+	bool mount_sd_card();
+	bool unmount_sd_card();
+	bool get_free_sector_size();
+	bool open_file(const char* file_name);
+	bool close_file();
+	bool read_one_line(char* file_content, uint32_t buff_len);
 
 };
 

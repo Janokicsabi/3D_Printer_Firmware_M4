@@ -43,6 +43,7 @@ public:
 	const char get_axis_name();
 	const float get_axis_pos();
 	Motor* get_motor();
+	Limit_switch* get_limit_switch();
 	const float get_one_step_displacement();
 	const bool is_position_changed(float new_pos);
 	void update_position(float new_pos);

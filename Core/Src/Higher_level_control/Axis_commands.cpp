@@ -45,28 +45,29 @@ void axis_commands_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e) 
 	axis_E = axis_e;
 }
 
-void execute_G1(Possible_params* command) {
+void execute_G1(Command_struct* command) {
 	//Move end effector from point to point in a linear line
 	execute_axis_move_command(command);
+	xTaskCreate(task_wait_for_motor_stop, "WAIT_FOR_MOTOR_STOP", TASK_SMALL_STACK_SIZE, NULL, TASK_MID_PRIO, NULL);
 }
 
-void execute_G21(Possible_params* command) {
+void execute_G21(Command_struct* command) {
 	//Set all units to millimeter
 	//The current software version only supports units in mm, so no conversion is necessary
 }
 
-void execute_G28(Possible_params* command) {
+void execute_G28(Command_struct* command) {
 	//Home all axis
 	const float HOME_MOVE_SPEED = 2000;
 	axis_X->home_axis(HOME_MOVE_SPEED);
 }
 
-void execute_G90(Possible_params* command) {
+void execute_G90(Command_struct* command) {
 	//Set absolute positioning
 	//The current software version only supports absolute positioning, so no action needed
 }
 
-void execute_G92(Possible_params* command) {
+void execute_G92(Command_struct* command) {
 	//Modify the gives axis's position parameter
 	if (command->x.is_param_valid) {
 		axis_X->update_position(command->x.param_value);
@@ -82,12 +83,12 @@ void execute_G92(Possible_params* command) {
 	}
 }
 
-void execute_M82(Possible_params* command) {
+void execute_M82(Command_struct* command) {
 	//Set the extruder to absolute positioning mode
 	//The current software version only supports absolute positioning, so no action needed
 }
 
-void execute_M84(Possible_params* command) {
+void execute_M84(Command_struct* command) {
 	//Disable motors
 	Motor::disable_motors();
 }
@@ -101,7 +102,7 @@ void task_wait_for_motor_stop(void* params) {
 	vTaskDelete(NULL);
 }
 
-void execute_axis_move_command(Possible_params* command) {
+void execute_axis_move_command(Command_struct* command) {
 	//TODO speed számítás ellenőriz
 	//TODO Probléma: gyorsítás esetén nem lesz jó, ha nem maximális feed rate sebességgel mozgott
 	float current_x_pos = axis_X->get_axis_pos();

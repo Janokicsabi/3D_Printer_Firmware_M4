@@ -23,28 +23,28 @@ void temp_commands_init(Temp_controller* hotend, Temp_controller* bed) {
 	bed_heater = bed;
 }
 
-void execute_M104(Possible_params* command) {
+void execute_M104(Command_struct* command) {
 	//Start the hotend heating process
 	//Doesn't wait for the goal temperature to be reached
 	start_temperature_control(hotend_heater, command);
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
-void execute_M109(Possible_params* command) {
+void execute_M109(Command_struct* command) {
 	//Start the hotend heating process
 	//Waits for the goal temperature to be reached
 	start_temperature_control(hotend_heater, command);
 	xTaskCreate(task_wait_for_temp_to_reach, "TEMP_REACH_HOTEND", TASK_SMALL_STACK_SIZE, (void*)hotend_heater, TASK_LOW_PRIO, NULL);
 }
 
-void execute_M140(Possible_params* command) {
+void execute_M140(Command_struct* command) {
 	//Start the bed heating process
 	//Doesn't wait for the goal temperature to be reached
 	start_temperature_control(bed_heater, command);
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
-void execute_M190(Possible_params* command) {
+void execute_M190(Command_struct* command) {
 	//Start the bed heating process
 	//Waits for the goal temperature to be reached
 	start_temperature_control(bed_heater, command);
@@ -52,7 +52,7 @@ void execute_M190(Possible_params* command) {
 }
 
 //TODO Azt is meg lehetne csinálni, hogy a Task-ot suspendeli, illetve folytatja
-void start_temperature_control(Temp_controller* heater, Possible_params* command) {
+void start_temperature_control(Temp_controller* heater, Command_struct* command) {
 	if (command->s.is_param_valid) {
 		float goal_temp = command->s.param_value;
 		heater->reset_controller_variables();

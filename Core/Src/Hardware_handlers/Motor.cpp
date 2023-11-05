@@ -86,11 +86,24 @@ void Motor::change_motor_dir_pin(uint8_t new_dir) {
 //@brief	This function calculates the required time delay between steps,
 //			so the printer can move continuously with the required speed
 //@param	move_speed	The required travelling speed [mm/min]
-//TODO: Extrém figyelem arra, hogy a Timer period-ig el tud-e számolni a timer számlálója!!! Ha nem, akkor prescalert állítani kell!
+//TODO: Nem itt kellene a prescaler-t állítani, valahogy kiszervez függvénybe vagy ilyenek
 const uint32_t Motor::calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement) {
 	uint32_t timer_clk_freq = HAL_RCC_GetPCLK2Freq();	//[Hz]
-	float timer_freq = (float)timer_clk_freq / ((float)this->timer->Init.Prescaler + 1);
-	uint32_t motor_timer_period = (uint32_t)round(((timer_freq * (float)SECONDS_IN_A_MINUTE * one_step_displacement) / (float)move_speed));
+	uint32_t maxTimerValue = this->timer->Instance->ARR;
+	uint32_t motor_timer_period = 0;
+	uint32_t current_prescaler;
+	this->timer->Init.Prescaler = 1;
+
+	current_prescaler = this->timer->Init.Prescaler;
+	float timer_freq = (float)timer_clk_freq / ((float)(current_prescaler + 1));
+	motor_timer_period = (uint32_t)round(((timer_freq * (float)SECONDS_IN_A_MINUTE * one_step_displacement) / (float)move_speed));
+
+	if (motor_timer_period > maxTimerValue) {
+		float prescaler_diff = ceil(motor_timer_period / maxTimerValue);
+		this->timer->Init.Prescaler = (current_prescaler + 1) * prescaler_diff;
+		timer_freq = (float)timer_clk_freq / ((float)(this->timer->Init.Prescaler + 1));
+		motor_timer_period = (uint32_t)round(((timer_freq * (float)SECONDS_IN_A_MINUTE * one_step_displacement) / (float)move_speed));
+	}
 	return motor_timer_period;
 }
 
@@ -105,13 +118,13 @@ void Motor::set_motor_timer_period(uint32_t timer_period) {
 void Motor::start_motor_timer() {
 	HAL_TIM_Base_Start_IT(this->timer);
 	HAL_TIM_PWM_Start_IT(this->timer, this->timer_channel);
-	xEventGroupSetBits(motor_state, MOTOR_MOVING);
+    xEventGroupSetBitsFromISR(motor_state, MOTOR_MOVING, NULL);
 }
 
 void Motor::stop_motor_timer() {
 	HAL_TIM_Base_Stop_IT(this->timer);
 	HAL_TIM_PWM_Stop_IT(this->timer, this->timer_channel);
-	xEventGroupSetBits(motor_state, MOTOR_STANDING);
+	xEventGroupSetBitsFromISR(motor_state, MOTOR_STANDING, NULL);
 }
 
 void Motor::motor_PWM_callback() {

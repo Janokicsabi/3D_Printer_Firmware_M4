@@ -63,6 +63,10 @@ Motor* Axis::get_motor() {
 	return this->motor;
 }
 
+Limit_switch* Axis::get_limit_switch() {
+	return this->limit_switch;
+}
+
 const float Axis::get_one_step_displacement() {
 	return this->displacement_per_microstep;
 }

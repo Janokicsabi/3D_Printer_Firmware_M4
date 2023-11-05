@@ -16,15 +16,16 @@
 class Limit_switch {
 private:
 	GPIO_TypeDef* switch_port;
-	uint32_t switch_pin;
+	uint16_t switch_pin;
 	Motor* motor;
 
 public:
 	Limit_switch();
-	Limit_switch(GPIO_TypeDef* switch_port, uint32_t switch_pin, Motor* motor);
+	Limit_switch(GPIO_TypeDef* switch_port, uint16_t switch_pin, Motor* motor);
 	virtual ~Limit_switch();
 
 	bool is_switch_pressed();
+	uint16_t get_switch_pin();
 	void switch_pressed_callback();
 };
 

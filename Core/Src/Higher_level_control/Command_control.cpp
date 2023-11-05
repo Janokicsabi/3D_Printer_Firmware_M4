@@ -14,7 +14,6 @@
 extern EventGroupHandle_t command_state;
 extern xQueueHandle queue_command;
 
-static Command* command;
 
 Command_executor supported_commands[] = {
 		//Axis commands
@@ -37,25 +36,25 @@ Command_executor supported_commands[] = {
 
 
 void init_command_control() {
-	command = new Command();
 }
 
 void task_command_control(void* param) {
 	//TODO NAGYON FONTOS: ITT ne maradjon az előző command-ból semmi, legyen teljesen üres!!!
 	while(1) {
-		EventBits_t command_status = xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, 0);
+		Command_struct received_command;
+		EventBits_t command_status = xEventGroupGetBits(command_state);
 		if((command_status & READY_FOR_NEXT_COMMAND) != 0) {
 			//TODO Máshol le kell zárni a command runing fázisát!!!
-			if (xQueueReceive(queue_command, &command, 0) == pdTRUE) {
-				int32_t command_index = get_command_index(command->get_params()->command_code);
+			if (xQueueReceive(queue_command, (void*)&received_command, 0) == pdPASS) {
+				int32_t command_index = get_command_index(received_command.command_code);
 				if (command_index != -1) {
 					xEventGroupSetBits(command_state, COMMAND_RUNING);
-					supported_commands[command_index].Command_executor(command->get_params());
+					supported_commands[command_index].Command_executor(&received_command);
 				} else {
 					//ERROR: Unsupported command
 				}
 			} else {
-				 //Coulnd't receive command from queue
+				 //Couldn't receive command from queue
 			}
 			//TODO Update parameters innen kikerült, de Axis-on belül el kell végezni!!!
 		}

@@ -29,18 +29,21 @@ Command::~Command() {
 
 }
 
-void Command::set_code_and_param_string(char* full_instruction_line) {
-	if (!is_instruction_comment(full_instruction_line) && !is_instruction_empty(full_instruction_line)) {
-		uint32_t pos = 0;
-		while(full_instruction_line[pos] != ' ') {
-			pos++;
-		}
-		memset(params.command_code, 0, MAX_COMMAND_SIZE);
-		memset(params_string, 0, MAX_PARAM_SIZE);
-		strncpy(params.command_code, full_instruction_line, pos);
-		//TODO ITT ellenőrizni, hogy a +1 jól működik-e!!!
-		strncpy(params_string, full_instruction_line + pos + 1, find_instruction_end_char(full_instruction_line) - pos);
+bool Command::set_code_and_param_string(char* full_instruction_line) {
+	if (is_instruction_comment(full_instruction_line) || is_instruction_empty(full_instruction_line)) {
+		return false;
 	}
+
+	uint32_t pos = 0;
+	while(full_instruction_line[pos] != ' ') {
+		pos++;
+	}
+	memset(params.command_code, 0, MAX_COMMAND_SIZE);
+	memset(params_string, 0, MAX_PARAM_SIZE);
+	strncpy(params.command_code, full_instruction_line, pos);
+	//TODO ITT ellenőrizni, hogy a +1 jól működik-e!!!
+	strncpy(params_string, full_instruction_line + pos + 1, find_instruction_end_char(full_instruction_line) - pos);
+	return true;
 }
 
 void Command::extract_params_from_command_string() {
@@ -113,7 +116,7 @@ char* Command::get_command_code() {
 	return params.command_code;
 }
 
-Possible_params* Command::get_params() {
+Command_struct* Command::get_params() {
 	return &params;
 }
 

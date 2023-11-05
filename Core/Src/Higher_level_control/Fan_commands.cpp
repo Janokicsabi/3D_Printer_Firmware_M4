@@ -26,14 +26,14 @@ void fan_commands_init(Fan* hotend, Fan* part_cooling) {
 }
 
 //TODO Itt a duty cycle-t is kellene tudni állítani, ha belefér
-void execute_M106(Possible_params* command) {
+void execute_M106(Command_struct* command) {
 	//Set fan speed
 	hotend_fan->turn_on_fan();
 	part_cooling_fan->turn_on_fan();
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
-void execute_M107(Possible_params* command) {
+void execute_M107(Command_struct* command) {
 	//Turn off fan
 	hotend_fan->turn_off_fan();
 	part_cooling_fan->turn_off_fan();

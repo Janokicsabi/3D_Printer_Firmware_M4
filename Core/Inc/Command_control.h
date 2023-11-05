@@ -12,7 +12,7 @@
 
 typedef struct {
 	char command[MAX_COMMAND_SIZE];
-	void (*Command_executor)(Possible_params*);
+	void (*Command_executor)(Command_struct*);
 }Command_executor;
 
 void init_command_control();
