@@ -84,6 +84,10 @@ bool SD_card::read_one_line(char* file_content, uint32_t buff_len) {
 	return true;
 }
 
+FIL* SD_card::get_file() {
+	return &file;
+}
+
 void SD_card::sd_card_error_handler() {
 	//Error! Coulnd't mount/read sd card
 }

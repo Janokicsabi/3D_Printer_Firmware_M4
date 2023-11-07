@@ -6,7 +6,6 @@
  */
 
 #include "Fan_commands.h"
-#include "Fan.h"
 #include "task_creator.h"
 
 #include "FreeRTOS.h"

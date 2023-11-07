@@ -16,9 +16,14 @@ extern xQueueHandle queue_command;
 static char full_command_line[MAX_COMMAND_LENGTH];
 
 
-//TODO Majd arra nagyon figyelni, hogy a fájl végén mi történik, hogy olvassuk!!!
 void task_fill_message_queue(void* sd_card) {
 	while(1) {
+		if (f_eof(((SD_card*)sd_card)->get_file()) != 0) {
+			//TODO Ide esetleg valami flag, hogy jelezze, vége az egésznek.
+			//Fontos, hogy ezután még le kell futniuk a queue-ba helyezett üzeneteknek!
+			vTaskDelete(NULL);
+		}
+
 		Command command;
 		memset(full_command_line, 0, MAX_COMMAND_LENGTH);
 		if(((SD_card*)sd_card)->read_one_line(full_command_line, MAX_COMMAND_LENGTH)) {

@@ -10,11 +10,12 @@
 
 #include <Motor.h>
 #include <Axis.h>
+#include <Descartes_Axis.h>
 #include <Command.h>
 #include "G_code_reader.h"
 
 
-void axis_commands_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e);
+void axis_commands_init(Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descartes_Axis* axis_z, Axis* axis_e);
 void task_axis_control(void* param);
 void execute_G1(Command_struct* command);
 void execute_G21(Command_struct* command);

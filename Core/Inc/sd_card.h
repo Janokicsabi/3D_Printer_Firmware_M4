@@ -26,6 +26,7 @@ public:
 	bool open_file(const char* file_name);
 	bool close_file();
 	bool read_one_line(char* file_content, uint32_t buff_len);
+	FIL* get_file();
 
 };
 

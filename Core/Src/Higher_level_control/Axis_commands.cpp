@@ -8,6 +8,7 @@
 #include <Axis_commands.h>
 #include "Motor.h"
 #include "Axis.h"
+#include "Descartes_Axis.h"
 #include "task_creator.h"
 #include "G_code_reader.h"
 #include "Command_control.h"
@@ -26,7 +27,7 @@
 using namespace std;
 
 static float current_feedrate;
-static Axis* axis_X;
+static Descartes_Axis* axis_X;
 static Axis* axis_Y;
 static Axis* axis_Z;
 static Axis* axis_E;
@@ -34,7 +35,7 @@ static Axis* axis_E;
 extern EventGroupHandle_t command_state;
 
 
-void axis_commands_init(Axis* axis_x, Axis* axis_y, Axis* axis_z, Axis* axis_e) {
+void axis_commands_init(Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descartes_Axis* axis_z, Axis* axis_e) {
 	//TODO Átgondolni, hogy ez itt legyen-e
 	Motor::enable_motors();
 	current_feedrate = 0.0f;
@@ -121,8 +122,11 @@ void execute_axis_move_command(Command_struct* command) {
 	}
 
 	float end_eff_travel_dist = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+	if (end_eff_travel_dist == 0 && command->e.is_param_valid) {
+		end_eff_travel_dist = command->e.param_value;
+	}
 	//Move time in [min] (because feed rate is in [mm/min])
-	float move_time = end_eff_travel_dist / current_feedrate;
+	float move_time = fabs(end_eff_travel_dist / current_feedrate);
 
 	//bool is_feedrate_const = (prev_axis_parameters.f == new_axis_parameters.f);
 	bool is_feedrate_const = true;

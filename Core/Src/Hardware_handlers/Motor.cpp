@@ -10,8 +10,8 @@
 #include <cmath>
 
 
-Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0,
-		TIM_HandleTypeDef* timer = NULL, uint32_t timer_channel = 0, uint32_t microstep_devider = 1, bool is_soft_pwm = false) {
+Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0, TIM_HandleTypeDef* timer = NULL,
+		uint32_t timer_channel = 0, float full_step_degree = 1.8, uint32_t microstep_devider = 1, bool is_soft_pwm = false, PWM_type pwm_type = PWM) {
 	this->step_port = step_port;
 	this->step_pin = step_pin;
 	this->dir_port = dir_port;
@@ -19,8 +19,10 @@ Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef
 	this->timer = timer;
 	this->timer_channel = timer_channel;
 	this->remaining_steps = 0;
+	this->full_step_degree = full_step_degree;
 	this->microstep_devider = microstep_devider;
 	this->is_soft_pwm = is_soft_pwm;
+	this->pwm_type = pwm_type;
 
 	this->feedrate_accel_time_diff = 0;
 	this->change_motor_dir_pin(0);
@@ -37,6 +39,8 @@ Motor::Motor() {
 	this->timer_channel = 0;
 	this->remaining_steps = 0;
 	this->microstep_devider = 1;
+	this->is_soft_pwm = false;
+	this->pwm_type = PWM;
 }
 
 Motor::~Motor() {
@@ -45,7 +49,7 @@ Motor::~Motor() {
 
 
 void Motor::motor_move_const(uint32_t step, uint8_t dir) {
-	this->remaining_steps = step;
+	this->remaining_steps = (int32_t)step;
 	change_motor_dir_pin(dir);
 	this->feedrate_accel_time_diff = 0;
 	this->start_motor_timer();
@@ -112,18 +116,46 @@ const uint32_t Motor::calculate_motor_timer_period_from_speed(uint32_t move_spee
 //Ha nem jó a CCR1 beállítás, akkor: __HAL_TIM_SET_COMPARE();
 void Motor::set_motor_timer_period(uint32_t timer_period) {
 	this->timer->Init.Period = timer_period;
-	this->timer->Instance->CCR1 = (uint32_t)(timer_period / 2.0);
+
+	uint32_t auto_reload_value = (uint32_t)(timer_period / 2.0);
+	if (this->timer_channel == TIM_CHANNEL_1) {
+		this->timer->Instance->CCR1 = auto_reload_value;
+	}
+	else if (this->timer_channel == TIM_CHANNEL_2) {
+		this->timer->Instance->CCR2 = auto_reload_value;
+	}
+	else if (this->timer_channel == TIM_CHANNEL_3) {
+		this->timer->Instance->CCR3 = auto_reload_value;
+	}
+	else if (this->timer_channel == TIM_CHANNEL_4) {
+		this->timer->Instance->CCR4 = auto_reload_value;
+	}
+	else if (this->timer_channel == TIM_CHANNEL_5) {
+		this->timer->Instance->CCR5 = auto_reload_value;
+	}
+	else if (this->timer_channel == TIM_CHANNEL_6) {
+		this->timer->Instance->CCR6 = auto_reload_value;
+	}
 }
 
 void Motor::start_motor_timer() {
+	HAL_TIM_Base_Init(this->timer);
 	HAL_TIM_Base_Start_IT(this->timer);
-	HAL_TIM_PWM_Start_IT(this->timer, this->timer_channel);
+	if (this->pwm_type == PWM) {
+		HAL_TIM_PWM_Start_IT(this->timer, this->timer_channel);
+	} else if (this->pwm_type == PWM_N) {
+		HAL_TIMEx_PWMN_Start_IT(this->timer, this->timer_channel);
+	}
     xEventGroupSetBitsFromISR(motor_state, MOTOR_MOVING, NULL);
 }
 
 void Motor::stop_motor_timer() {
 	HAL_TIM_Base_Stop_IT(this->timer);
-	HAL_TIM_PWM_Stop_IT(this->timer, this->timer_channel);
+	if (this->pwm_type == PWM) {
+		HAL_TIM_PWM_Stop_IT(this->timer, this->timer_channel);
+	} else if (this->pwm_type == PWM_N) {
+		HAL_TIMEx_PWMN_Stop_IT(this->timer, this->timer_channel);
+	}
 	xEventGroupSetBitsFromISR(motor_state, MOTOR_STANDING, NULL);
 }
 
@@ -143,7 +175,7 @@ void Motor::motor_timer_callback() {
 	}
 
 	this->remaining_steps--;
-	if (this->remaining_steps == 0) {
+	if (this->remaining_steps <= 0) {
 		this->stop_motor_timer();
 	}
 }
@@ -158,6 +190,10 @@ TIM_HandleTypeDef* Motor::get_timer() {
 
 const bool Motor::get_is_soft_pwm() {
 	return this->is_soft_pwm;
+}
+
+const float Motor::get_full_step_degree() {
+	return this->full_step_degree;
 }
 
 const bool Motor::is_motor_moving() {

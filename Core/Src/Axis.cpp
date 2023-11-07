@@ -9,15 +9,13 @@
 #include <cmath>
 
 
-Axis::Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
-		const float axis_pitch, const float pitch_num_in_one_rotation, const uint8_t limit_switch_dir) :
-		workspace_frame_offset{workspace_frame_offset}, axis_length{axis_length}, axis_pitch{axis_pitch},
-		pitch_num_in_one_rotation{pitch_num_in_one_rotation}, displacement_per_microstep {
-			(MOTOR_BASIC_STEP_DEGREE / FULL_ROTATION_DEGREE) * (1.0 / motor->get_microstep_devider()) * pitch_num_in_one_rotation * axis_pitch},
-		limit_switch_dir{limit_switch_dir} {
+Axis::Axis(Motor* motor, const float full_rotation_displacement) {
 	this->motor = motor;
-	this->limit_switch = limit_switch;
 	this->pos_in_ws_frame = 0.0f;
+
+	float full_step_degrees = motor->get_full_step_degree();
+	float microstep_devider = motor->get_microstep_devider();
+	this->displacement_per_microstep = (full_step_degrees / FULL_ROTATION_DEGREE) * (1.0 / microstep_devider) * full_rotation_displacement;
 }
 
 Axis::~Axis() {
@@ -39,32 +37,12 @@ const uint8_t Axis::calculate_dir(float new_pos) {
 	}
 }
 
-float Axis::saturate_position(float new_pos) {
-	uint8_t dir = calculate_dir(new_pos);
-	if (dir != limit_switch_dir) {
-		if (new_pos > (axis_length - workspace_frame_offset)) {
-			new_pos = (axis_length - workspace_frame_offset);
-		} else if (new_pos < (0.0 - workspace_frame_offset)) {
-			new_pos = (0.0 - workspace_frame_offset);
-		}
-	}
-	return new_pos;
-}
-
-const char Axis::get_axis_name() {
-	return this->axis_name;
-}
-
 const float Axis::get_axis_pos() {
 	return this->pos_in_ws_frame;
 }
 
 Motor* Axis::get_motor() {
 	return this->motor;
-}
-
-Limit_switch* Axis::get_limit_switch() {
-	return this->limit_switch;
 }
 
 const float Axis::get_one_step_displacement() {
@@ -92,15 +70,6 @@ void Axis::control_axis(float move_speed, float new_pos, bool is_feedrate_const)
 	//}
 }
 
-void Axis::home_axis(float move_speed) {
-	const uint32_t MOVE_MAX_STEPS = 0xFFFFFFFF; 	//Biggest possible step num. Start moving, and it will be stopped by the limit switch
-	this->motor->set_motor_speed(move_speed, this->displacement_per_microstep);
-	this->motor->motor_move_const(MOVE_MAX_STEPS, this->limit_switch_dir);
-	//Hence the 0 position is in the workspace frame, the limit switch is in negative direction
-	//and shifted with the workspace_frame_offset
-	update_position(0.0 - workspace_frame_offset);
-}
-
 const bool Axis::is_position_changed(float new_pos) {
 	if (new_pos != this->pos_in_ws_frame) {
 		return true;
@@ -112,4 +81,13 @@ const bool Axis::is_position_changed(float new_pos) {
 void Axis::update_position(float new_pos) {
 	this->pos_in_ws_frame = new_pos;
 }
+
+float Axis::saturate_position(float new_pos) {
+	return new_pos;
+}
+
+Limit_switch* Axis::get_limit_switch() {
+	return nullptr;
+}
+
 

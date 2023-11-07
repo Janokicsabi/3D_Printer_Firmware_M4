@@ -14,36 +14,24 @@
 #define SRC_AXIS_H_
 
 class Axis {
-private:
-	char axis_name;
+protected:
 	Motor* motor;
-	Limit_switch* limit_switch;
-
 	float pos_in_ws_frame;						//The position reladtive to workspace frame, 0 position is at the edge of the printing area
-	const float workspace_frame_offset;			//Distance from the limit switch position to the printing area 0 position
-	const float axis_length;					//The distance from motor possible endpoint to other in millimeter
-
-	const float axis_pitch;
-	const float pitch_num_in_one_rotation;
-	const float displacement_per_microstep;		//Displacement in mm for one microstep
-
-	const uint8_t limit_switch_dir;
+	float displacement_per_microstep;			//Displacement in mm for one microstep
 
 public:
-	Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_endpoint,
-			const float axis_pitch, const float pitch_num_in_one_rotation, const uint8_t limit_switch_dir);
+	Axis(Motor* motor, const float full_rotation_displacement);
 	virtual ~Axis();
 
 	const uint32_t calculate_step_num(float new_pos);
 	const uint8_t calculate_dir(float new_position);
-	float saturate_position(float new_pos);
 	void control_axis(float move_speed, float new_pos, bool is_feedrate_const);
-	void home_axis(float move_speed);
 
-	const char get_axis_name();
+	virtual float saturate_position(float new_pos);
+	virtual Limit_switch* get_limit_switch();
+
 	const float get_axis_pos();
 	Motor* get_motor();
-	Limit_switch* get_limit_switch();
 	const float get_one_step_displacement();
 	const bool is_position_changed(float new_pos);
 	void update_position(float new_pos);

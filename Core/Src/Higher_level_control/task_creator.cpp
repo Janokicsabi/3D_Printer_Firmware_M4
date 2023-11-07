@@ -15,9 +15,12 @@
 
 //Other file includes
 #include <Motor.h>
+#include <Fan.h>
 #include <Axis.h>
+#include <Descartes_Axis.h>
 #include <Command_control.h>
 #include <Axis_commands.h>
+#include <Fan_commands.h>
 #include "limit_switch.h"
 #include "sd_card.h"
 #include "temperature_control.h"
@@ -78,26 +81,30 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	sd_card->open_file("test");
+	sd_card->open_file("test1");
 
 	//Init
 	init_thermistor(&hadc1, &hadc2);
 	//init_temperature_control(&htim1, TIM_CHANNEL_2);
 
+	Fan* fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
+	Fan* fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin);
+	fan_commands_init(fan_hotend, fan_part_cooling);
+
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
-	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 8, true);
-	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 8, false);
-	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 8, false);
-	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 16, false);
+	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 1.8, 8, true, PWM);
+	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 1.8, 8, false, PWM);
+	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 1.8, 8, false, PWM);
+	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 1.8, 16, false, PWM_N);
 
 	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, motor_X);
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, motor_Y);
 	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, motor_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Axis* axis_X = new Axis(motor_X, limit_X, 30.0, 280.0, 2.0, 20, 0);
-	Axis* axis_Y = new Axis(motor_Y, limit_Y, 60.0, 240.0, 2.0, 20, 0);
-	Axis* axis_Z = new Axis(motor_Z, limit_Z, 0.0, 180.0, 2.0, 20, 0);
-	Axis* axis_E = new Axis(motor_E, nullptr, 0.0, 0.0, 2.0, 20, 0);
+	Descartes_Axis* axis_X = new Descartes_Axis(motor_X, limit_X, 30.0, 280.0, 40, 0);
+	Descartes_Axis* axis_Y = new Descartes_Axis(motor_Y, limit_Y, 60.0, 240.0, 40, 0);
+	Descartes_Axis* axis_Z = new Descartes_Axis(motor_Z, limit_Z, 0.0, 180.0, 40, 0);
+	Axis* axis_E = new Axis(motor_E, 4.637);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(axis_X, axis_Y, axis_Z, axis_E);
 	init_cpp_callback_wrap((void**)axes);
@@ -108,13 +115,23 @@ void task_creator(void* param) {
 	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//TEST MOTOR
-	char read_instruction[30] = "G1 Z30.0 F1000\n";
+	/*
+	char read_instruction[30] = "G1 E50.0 F100\n";
 	Command* c = new Command();
 	Command_struct* p_p;
 	c->set_code_and_param_string(read_instruction);
 	c->extract_params_from_command_string();
 	p_p = c->get_params();
-	execute_G1(p_p);
+	execute_G1(p_p);*/
+
+	//TEST FAN
+	char read_instruction[30] = "M106 S229.5\n";
+	Command* c = new Command();
+	Command_struct* p_p;
+	c->set_code_and_param_string(read_instruction);
+	c->extract_params_from_command_string();
+	p_p = c->get_params();
+	execute_M106(p_p);
 
 	/*char read_instruction2[30] = "G1 X0.0 Z0.0 F2000\n";
 	c->set_code_and_param_string(read_instruction2);

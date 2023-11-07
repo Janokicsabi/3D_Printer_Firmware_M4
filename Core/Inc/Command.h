@@ -12,7 +12,7 @@
 #include <map>
 
 #define MAX_COMMAND_SIZE	5
-#define MAX_PARAM_SIZE		64
+#define MAX_PARAM_SIZE		70
 
 typedef struct {
 	float param_value;
