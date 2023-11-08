@@ -13,7 +13,7 @@
 #include "Temp_controller.h"
 
 
-void temp_commands_init();
+void temp_commands_init(Temp_controller* hotend, Temp_controller* bed);
 void execute_M104(Command_struct* command);
 void execute_M109(Command_struct* command);
 void execute_M140(Command_struct* command);

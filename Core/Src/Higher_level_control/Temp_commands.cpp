@@ -18,6 +18,7 @@ extern EventGroupHandle_t command_state;
 static Temp_controller* hotend_heater;
 static Temp_controller* bed_heater;
 
+
 void temp_commands_init(Temp_controller* hotend, Temp_controller* bed) {
 	hotend_heater = hotend;
 	bed_heater = bed;
@@ -26,6 +27,8 @@ void temp_commands_init(Temp_controller* hotend, Temp_controller* bed) {
 void execute_M104(Command_struct* command) {
 	//Start the hotend heating process
 	//Doesn't wait for the goal temperature to be reached
+	xTaskCreate(task_temp_read, "TEMP_READ", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_hotend_control, "HOTEND_TEMP_CONTROL", TASK_MID_STACK_SIZE, (void*)hotend_heater, TASK_MID_PRIO, NULL);
 	start_temperature_control(hotend_heater, command);
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
@@ -40,6 +43,8 @@ void execute_M109(Command_struct* command) {
 void execute_M140(Command_struct* command) {
 	//Start the bed heating process
 	//Doesn't wait for the goal temperature to be reached
+	xTaskCreate(task_temp_read, "TEMP_READ", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_bed_control, "BED_TEMP_CONTROL", TASK_MID_STACK_SIZE, (void*)bed_heater, TASK_MID_PRIO, NULL);
 	start_temperature_control(bed_heater, command);
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
@@ -47,6 +52,8 @@ void execute_M140(Command_struct* command) {
 void execute_M190(Command_struct* command) {
 	//Start the bed heating process
 	//Waits for the goal temperature to be reached
+	xTaskCreate(task_temp_read, "TEMP_READ", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_bed_control, "BED_TEMP_CONTROL", TASK_MID_STACK_SIZE, (void*)bed_heater, TASK_MID_PRIO, NULL);
 	start_temperature_control(bed_heater, command);
 	xTaskCreate(task_wait_for_temp_to_reach, "TEMP_REACH_BED", TASK_SMALL_STACK_SIZE, (void*)bed_heater, TASK_LOW_PRIO, NULL);
 }

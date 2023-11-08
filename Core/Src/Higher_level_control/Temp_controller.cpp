@@ -9,8 +9,14 @@
 #include "thermistor.h"
 #include <algorithm>
 
+float global_temp_celsius = 0.0f;
+float global_duty = 0.0f;
+bool global_is_goal = false;
 
-Temp_controller::Temp_controller(TIM_HandleTypeDef* timer, uint32_t timer_channel, float Kp, float Ki, float Ti_PI, float goal_error_tolerance, bool is_soft_pwm) {
+Temp_controller::Temp_controller(GPIO_TypeDef* heater_port, uint16_t heater_pin, TIM_HandleTypeDef* timer,
+		uint32_t timer_channel, float Kp, float Ki, float Ti_PI, float goal_error_tolerance, bool is_soft_pwm) {
+	this->heater_port = heater_port;
+	this->heater_pin = heater_pin;
 	this->timer = timer;
 	this->timer_channel = timer_channel;
 	this->Kp = Kp;
@@ -144,11 +150,13 @@ void Temp_controller::reset_controller_variables() {
 }
 
 void Temp_controller::heater_timer_start() {
+	HAL_TIM_Base_Init(this->timer);
 	HAL_TIM_PWM_Start_IT(timer, timer_channel);
 	HAL_TIM_Base_Start_IT(timer);
 }
 
 void Temp_controller::heater_timer_stop() {
+	HAL_TIM_Base_Init(this->timer);
 	HAL_TIM_PWM_Stop_IT(timer, timer_channel);
 	HAL_TIM_Base_Stop_IT(timer);
 	HAL_GPIO_WritePin(heater_port, heater_pin, GPIO_PIN_RESET);
@@ -182,6 +190,10 @@ void task_bed_control(void* param) {
 		uint16_t current_temp_adc = get_last_bed_temp_adc();
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
+		//TODO Majd eltávolítani
+		global_temp_celsius = current_temp_celsius;
+		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
+
 		if (current_temp_celsius > MAX_GOAL_TEMP) {
 			bed_controller->heater_timer_stop();
 			while (current_temp_celsius > MAX_GOAL_TEMP) {
@@ -192,6 +204,8 @@ void task_bed_control(void* param) {
 
 		bed_controller->set_current_temp_celius(convert_temperature(current_temp_adc));
 		float new_duty_cycle = bed_controller->compute_PI_controller();
+		//TODO majd eltávlít
+		global_duty = new_duty_cycle;
 		bed_controller->set_duty_cycle(new_duty_cycle);
 		vTaskDelay(100);
 	}

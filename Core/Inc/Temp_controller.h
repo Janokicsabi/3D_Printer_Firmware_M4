@@ -46,7 +46,8 @@ private:
 	void modify_timer_compare();
 
 public:
-	Temp_controller(TIM_HandleTypeDef* timer, uint32_t timer_channel, float Kp, float Ki, float Ti_PI, float goal_error_tolerance, bool is_soft_pwm);
+	Temp_controller(GPIO_TypeDef* heater_port, uint16_t heater_pin, TIM_HandleTypeDef* timer,
+			uint32_t timer_channel, float Kp, float Ki, float Ti_PI, float goal_error_tolerance, bool is_soft_pwm);
 	virtual ~Temp_controller();
 
 	float compute_PI_controller();
@@ -66,6 +67,7 @@ public:
 };
 
 void task_hotend_control(void* param);
+void task_bed_control(void* param);
 void task_temp_log(void* param);
 
 #endif /* SRC_HIGHER_LEVEL_CONTROL_TEMP_CONTROLLER_H_ */
