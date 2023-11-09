@@ -25,8 +25,12 @@
 
 #define MESSAGE_QUEUE_SIZE		20
 
-#define COMMAND_RUNING				(1 << 0)
-#define READY_FOR_NEXT_COMMAND		(1 << 1)
+#define READY_FOR_NEXT_COMMAND		(1 << 0)
+
+#define MOTOR_X_FINISHED	(1 << 0)
+#define MOTOR_Y_FINISHED	(1 << 1)
+#define MOTOR_Z_FINISHED	(1 << 2)
+#define MOTOR_E_FINISHED	(1 << 3)
 
 
 #ifdef __cplusplus

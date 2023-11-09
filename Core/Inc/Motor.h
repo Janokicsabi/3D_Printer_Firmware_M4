@@ -19,8 +19,6 @@
 #define SECONDS_IN_A_MINUTE			60
 #define FULL_ROTATION_DEGREE		360.0f
 
-#define MOTOR_MOVING				(1 << 0)
-#define MOTOR_STANDING				(1 << 1)
 
 typedef enum {
 	PWM,
@@ -43,7 +41,7 @@ private:
 	PWM_type pwm_type;
 	float motor_speed;
 	bool is_soft_pwm;
-	EventGroupHandle_t motor_state;
+	uint32_t motor_event_bit;
 
 	const uint32_t calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement);
 	void set_motor_timer_period(uint32_t timer_period);
@@ -52,9 +50,10 @@ private:
 	void start_motor_timer();
 
 public:
+	static EventGroupHandle_t event_motor_standing;
 
 	Motor(GPIO_TypeDef* step_port, uint16_t step_pin, GPIO_TypeDef* dir_port, uint16_t dir_pin, TIM_HandleTypeDef* timer,
-			uint32_t timer_channel, float full_step_degree, uint32_t microstep_devider, bool is_soft_pwm, PWM_type pwm_type);
+			uint32_t timer_channel, float full_step_degree, uint32_t microstep_devider, bool is_soft_pwm, PWM_type pwm_type, uint32_t motor_event_bit);
 	Motor();
 	virtual ~Motor();
 	static void enable_motors();

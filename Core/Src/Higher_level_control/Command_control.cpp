@@ -39,26 +39,15 @@ void init_command_control() {
 }
 
 void task_command_control(void* param) {
-	//TODO NAGYON FONTOS: ITT ne maradjon az előző command-ból semmi, legyen teljesen üres!!!
+	//TODO NAGYON FONTOS: ITT ne maradjon az előző command-ból semmi, legyen teljesen üres!!! (valószínűleg jó)
+	//TODO Remélhetőleg nem dominálja le teljesen a többi taskot, erre figyelni!
 	while(1) {
-		Command_struct received_command;
-		EventBits_t command_status = xEventGroupGetBits(command_state);
+		EventBits_t command_status = xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
 		if((command_status & READY_FOR_NEXT_COMMAND) != 0) {
-			//TODO Máshol le kell zárni a command runing fázisát!!!
-			if (xQueueReceive(queue_command, (void*)&received_command, 0) == pdPASS) {
-				int32_t command_index = get_command_index(received_command.command_code);
-				if (command_index != -1) {
-					xEventGroupSetBits(command_state, COMMAND_RUNING);
-					supported_commands[command_index].Command_executor(&received_command);
-				} else {
-					//ERROR: Unsupported command
-				}
-			} else {
-				 //Couldn't receive command from queue
-			}
-			//TODO Update parameters innen kikerült, de Axis-on belül el kell végezni!!!
+			Command_struct received_command;
+			int32_t command_index = get_last_command_from_queue(&received_command);
+			supported_commands[command_index].Command_executor(&received_command);
 		}
-		vTaskDelay(100);
 	}
 }
 
@@ -72,4 +61,17 @@ int32_t get_command_index(char* code) {
         }
     }
     return command_index;
+}
+
+int32_t get_last_command_from_queue(Command_struct* last_command) {
+	int32_t command_index;
+	if (xQueueReceive(queue_command, (void*)&last_command, 0) == pdPASS) {
+		command_index = get_command_index(last_command->command_code);
+		if (command_index == -1) {
+			//ERROR: Unsupported command
+		}
+	} else {
+		 //Couldn't receive command from queue
+	}
+	return command_index;
 }

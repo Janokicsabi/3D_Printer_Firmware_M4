@@ -10,8 +10,10 @@
 #include <cmath>
 
 
+EventGroupHandle_t Motor::event_motor_standing = xEventGroupCreate();
+
 Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0, TIM_HandleTypeDef* timer = NULL,
-		uint32_t timer_channel = 0, float full_step_degree = 1.8, uint32_t microstep_devider = 1, bool is_soft_pwm = false, PWM_type pwm_type = PWM) {
+		uint32_t timer_channel = 0, float full_step_degree = 1.8, uint32_t microstep_devider = 1, bool is_soft_pwm = false, PWM_type pwm_type = PWM, uint32_t motor_event_bit = 0) {
 	this->step_port = step_port;
 	this->step_pin = step_pin;
 	this->dir_port = dir_port;
@@ -24,10 +26,11 @@ Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef
 	this->is_soft_pwm = is_soft_pwm;
 	this->pwm_type = pwm_type;
 
+	this->motor_event_bit = motor_event_bit;
+	xEventGroupSetBits(event_motor_standing, this->motor_event_bit);
+
 	this->feedrate_accel_time_diff = 0;
 	this->change_motor_dir_pin(0);
-	motor_state = xEventGroupCreate();
-	xEventGroupSetBits(motor_state, MOTOR_STANDING);
 }
 
 Motor::Motor() {
@@ -146,7 +149,7 @@ void Motor::start_motor_timer() {
 	} else if (this->pwm_type == PWM_N) {
 		HAL_TIMEx_PWMN_Start_IT(this->timer, this->timer_channel);
 	}
-    xEventGroupSetBitsFromISR(motor_state, MOTOR_MOVING, NULL);
+	xEventGroupClearBits(event_motor_standing, this->motor_event_bit);
 }
 
 void Motor::stop_motor_timer() {
@@ -156,14 +159,15 @@ void Motor::stop_motor_timer() {
 	} else if (this->pwm_type == PWM_N) {
 		HAL_TIMEx_PWMN_Stop_IT(this->timer, this->timer_channel);
 	}
-	xEventGroupSetBitsFromISR(motor_state, MOTOR_STANDING, NULL);
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	if (xEventGroupSetBitsFromISR(event_motor_standing, this->event_motor_standing, &xHigherPriorityTaskWoken) != pdFAIL) {
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 }
 
 void Motor::motor_PWM_callback() {
 	HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
 }
-
-extern TIM_HandleTypeDef htim6;
 
 void Motor::motor_timer_callback() {
 	/*if (this->feedrate_accel_time_diff != 0) {
@@ -197,11 +201,11 @@ const float Motor::get_full_step_degree() {
 }
 
 const bool Motor::is_motor_moving() {
-	EventBits_t motor_status = xEventGroupWaitBits(motor_state, MOTOR_MOVING, pdTRUE, pdFALSE, 0);
-	if ((motor_status & MOTOR_MOVING) != 0) {
-		return true;
+	EventBits_t motor_status = xEventGroupGetBits(event_motor_standing);
+	if ((motor_status & this->motor_event_bit) != 0) {
+		return false;
 	}
-	return false;
+	return true;
 }
 
 void Motor::enable_motors() {

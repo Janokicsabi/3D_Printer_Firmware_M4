@@ -54,6 +54,8 @@ SemaphoreHandle_t goal_temp_sem;
 
 //Event flags
 EventGroupHandle_t command_state;
+//TODO REMOVE, TEST ONLY
+EventGroupHandle_t event_test;
 
 //Queues
 xQueueHandle queue_command;
@@ -96,10 +98,10 @@ void task_creator(void* param) {
 	fan_commands_init(fan_hotend, fan_part_cooling);
 
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
-	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 1.8, 8, true, PWM);
-	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 1.8, 8, false, PWM);
-	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 1.8, 8, false, PWM);
-	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 1.8, 16, false, PWM_N);
+	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 1.8, 8, true, PWM, MOTOR_X_FINISHED);
+	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 1.8, 8, false, PWM, MOTOR_Y_FINISHED);
+	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 1.8, 8, false, PWM, MOTOR_Z_FINISHED);
+	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 1.8, 16, false, PWM_N, MOTOR_E_FINISHED);
 
 	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, motor_X);
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, motor_Y);
@@ -112,19 +114,22 @@ void task_creator(void* param) {
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(axis_X, axis_Y, axis_Z, axis_E);
 
+	Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
+	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 6.25, 0.0767, 81.46, 2.0, false);
+	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
+
 	//TEST GCode reader & RTOS queue
 	//xTaskCreate(task_fill_message_queue, "G_CODE_READER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
 	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//TEST MOTOR
-	/*
-	char read_instruction[30] = "G1 E50.0 F100\n";
+	char read_instruction[30] = "G1 X10.0 F1000\n";
 	Command* c = new Command();
 	Command_struct* p_p;
 	c->set_code_and_param_string(read_instruction);
 	c->extract_params_from_command_string();
 	p_p = c->get_params();
-	execute_G1(p_p);*/
+	execute_G1(p_p);
 
 	//TEST FAN
 	/*char read_instruction[30] = "M106 S229.5\n";
@@ -136,7 +141,7 @@ void task_creator(void* param) {
 	execute_M106(p_p);*/
 
 	//TEST TEMP_CONTROL
-	Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
+	/*Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
 	//TODO Ezeket a paramétereket megállapítani!!!
 	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
 	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
@@ -148,13 +153,10 @@ void task_creator(void* param) {
 	c->set_code_and_param_string(read_instruction);
 	c->extract_params_from_command_string();
 	p_p = c->get_params();
-	execute_M190(p_p);
+	execute_M190(p_p);*/
 
 	//TEST HEAT BED
-	/*Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
-	//TODO Ezeket a paramétereket megállapítani!!!
-	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 6.25, 0.0767, 81.46, 2.0, false);
-	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
+	/*
 	init_thermistor(&hadc1, &hadc2);
 	bed_heater->set_duty_cycle(70.0);
 	uint32_t i = 0;
@@ -171,8 +173,6 @@ void task_creator(void* param) {
 	bed_heater->heater_timer_stop();
 	int asd = 0;*/
 
-
-
 	/*
 	//Tasks
 	xTaskCreate(task_temp_log, "TEMP_LOG_TASK", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
@@ -184,4 +184,3 @@ void task_creator(void* param) {
 	//xTaskCreate(task_motor_control, "MOTOR_CONTROL_TASK", TASK_MID_STACK_SIZE, NULL, TASK_HIGH_PRIO, NULL);
 	 */
 }
-

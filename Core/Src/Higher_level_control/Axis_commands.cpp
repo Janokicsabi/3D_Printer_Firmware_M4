@@ -49,23 +49,30 @@ void axis_commands_init(Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descarte
 void execute_G1(Command_struct* command) {
 	//Move end effector from point to point in a linear line
 	execute_axis_move_command(command);
-	xTaskCreate(task_wait_for_motor_stop, "WAIT_FOR_MOTOR_STOP", TASK_SMALL_STACK_SIZE, NULL, TASK_MID_PRIO, NULL);
+	xEventGroupWaitBits(Motor::event_motor_standing, MOTOR_X_FINISHED | MOTOR_Y_FINISHED |
+			  MOTOR_Z_FINISHED | MOTOR_E_FINISHED, pdFALSE, pdTRUE, portMAX_DELAY);
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_G21(Command_struct* command) {
 	//Set all units to millimeter
 	//The current software version only supports units in mm, so no conversion is necessary
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_G28(Command_struct* command) {
 	//Home all axis
 	const float HOME_MOVE_SPEED = 2000;
 	axis_X->home_axis(HOME_MOVE_SPEED);
+	xEventGroupWaitBits(Motor::event_motor_standing, MOTOR_X_FINISHED | MOTOR_Y_FINISHED |
+			  MOTOR_Z_FINISHED | MOTOR_E_FINISHED, pdFALSE, pdTRUE, portMAX_DELAY);
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_G90(Command_struct* command) {
 	//Set absolute positioning
 	//The current software version only supports absolute positioning, so no action needed
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_G92(Command_struct* command) {
@@ -82,25 +89,19 @@ void execute_G92(Command_struct* command) {
 	if (command->e.is_param_valid) {
 		axis_E->update_position(command->e.param_value);
 	}
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_M82(Command_struct* command) {
 	//Set the extruder to absolute positioning mode
 	//The current software version only supports absolute positioning, so no action needed
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_M84(Command_struct* command) {
 	//Disable motors
 	Motor::disable_motors();
-}
-
-void task_wait_for_motor_stop(void* params) {
-	while(axis_X->get_motor()->is_motor_moving() || axis_Y->get_motor()->is_motor_moving() ||
-			axis_Z->get_motor()->is_motor_moving() || axis_E->get_motor()->is_motor_moving()) {
-		vTaskDelay(10);
-	}
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
-	vTaskDelete(NULL);
 }
 
 void execute_axis_move_command(Command_struct* command) {
