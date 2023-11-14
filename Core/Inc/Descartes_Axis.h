@@ -18,7 +18,7 @@ private:
 	const float axis_length;					//The distance from motor possible endpoint to other in millimeter
 
 public:
-	Descartes_Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_endpoint,
+	Descartes_Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
 			const float full_rotation_displacement, const uint8_t limit_switch_dir);
 	virtual ~Descartes_Axis();
 

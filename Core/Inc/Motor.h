@@ -45,7 +45,6 @@ private:
 
 	const uint32_t calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement);
 	void set_motor_timer_period(uint32_t timer_period);
-	void change_motor_dir_pin(uint8_t new_dir);
 
 	void start_motor_timer();
 
@@ -62,12 +61,15 @@ public:
 	void motor_move_const(uint32_t step, uint8_t dir);
 	void set_motor_speed(float move_speed, float one_step_displacement);
 	void motor_move_accel(uint32_t step, uint8_t dir, uint32_t time_diff);
+	void change_motor_dir_pin(uint8_t new_dir);
 
 	const uint32_t get_microstep_devider();
 	TIM_HandleTypeDef* get_timer();
 	const bool get_is_soft_pwm();
 	const float get_full_step_degree();
 	const bool is_motor_moving();
+	GPIO_TypeDef* get_step_port();
+	uint16_t get_step_pin();
 
 	void stop_motor_timer();
 	void motor_timer_callback();

@@ -12,6 +12,7 @@
 #include "task_creator.h"
 #include "G_code_reader.h"
 #include "Command_control.h"
+#include "cpp_callback_wrap.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -28,9 +29,11 @@ using namespace std;
 
 static float current_feedrate;
 static Descartes_Axis* axis_X;
-static Axis* axis_Y;
-static Axis* axis_Z;
+static Descartes_Axis* axis_Y;
+static Descartes_Axis* axis_Z;
 static Axis* axis_E;
+
+extern TIM_HandleTypeDef htim16;
 
 extern EventGroupHandle_t command_state;
 
@@ -122,17 +125,42 @@ void execute_axis_move_command(Command_struct* command) {
 		current_feedrate = command->f.param_value;
 	}
 
-	float end_eff_travel_dist = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
-	if (end_eff_travel_dist == 0 && command->e.is_param_valid) {
-		end_eff_travel_dist = command->e.param_value;
+
+	//TODO Majd elmozdítani!!!
+	float a_max = 100;			//[mm/s^2]
+	float a_used = a_max;
+	float max_dist = fmax(fmax(dx, dy), dz);
+	float acc_time = sqrt(max_dist / a_max);
+	//Time to reach the maximum speed (feed rate)
+	float feed_rate_mm_s = current_feedrate / 60.0f;
+	float time_to_v_max = feed_rate_mm_s / a_max;
+	if (time_to_v_max < acc_time) {
+		a_used = (feed_rate_mm_s * feed_rate_mm_s) / max_dist;
+		acc_time = sqrt(max_dist / a_used);
 	}
-	//Move time in [min] (because feed rate is in [mm/min])
-	float move_time = fabs(end_eff_travel_dist / current_feedrate);
 
-	//bool is_feedrate_const = (prev_axis_parameters.f == new_axis_parameters.f);
-	bool is_feedrate_const = true;
+	float a_x = dx / (acc_time * acc_time);
+	float a_y = dy / (acc_time * acc_time);
+	float a_z = dz / (acc_time * acc_time);
+	float a_e = de / (acc_time * acc_time);
+	float acc[NUM_OF_AXES] = {a_x, a_y, a_z, a_e};
 
-	if (command->x.is_param_valid) {
+	uint32_t step_num_required[NUM_OF_AXES];
+	dx != 0 ? step_num_required[0] = axis_X->calculate_step_num(command->x.param_value) : step_num_required[0] = 0;
+	dy != 0 ? step_num_required[1] = axis_Y->calculate_step_num(command->y.param_value) : step_num_required[1] = 0;
+	dz != 0 ? step_num_required[2] = axis_Z->calculate_step_num(command->z.param_value) : step_num_required[2] = 0;
+	de != 0 ? step_num_required[3] = axis_E->calculate_step_num(command->e.param_value) : step_num_required[3] = 0;
+
+	if (dx!=0) axis_X->get_motor()->change_motor_dir_pin(axis_X->calculate_dir(command->x.param_value));
+	if (dy!=0) axis_Y->get_motor()->change_motor_dir_pin(axis_Y->calculate_dir(command->y.param_value));
+	if (dz!=0) axis_Z->get_motor()->change_motor_dir_pin(axis_Z->calculate_dir(command->z.param_value));
+	if (de!=0) axis_E->get_motor()->change_motor_dir_pin(axis_E->calculate_dir(command->e.param_value));
+
+	reset_motor_linear_acc_params(step_num_required, acc, acc_time);
+
+	HAL_TIM_Base_Start_IT(&htim16);
+
+	/*if (command->x.is_param_valid) {
 		float move_speed_x = dx / move_time;
 		axis_X->control_axis(move_speed_x, command->x.param_value, is_feedrate_const);
 	}
@@ -147,6 +175,6 @@ void execute_axis_move_command(Command_struct* command) {
 	if (command->e.is_param_valid) {
 		float move_speed_e = de / move_time;
 		axis_E->control_axis(move_speed_e, command->e.param_value, is_feedrate_const);
-	}
+	}*/
 }
 

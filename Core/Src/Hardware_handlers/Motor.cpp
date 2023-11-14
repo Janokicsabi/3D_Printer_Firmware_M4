@@ -208,6 +208,14 @@ const bool Motor::is_motor_moving() {
 	return true;
 }
 
+GPIO_TypeDef* Motor::get_step_port() {
+	return this->step_port;
+}
+
+uint16_t Motor::get_step_pin() {
+	return this->step_pin;
+}
+
 void Motor::enable_motors() {
 	HAL_GPIO_WritePin(EN_Motor_GPIO_Port, EN_Motor_Pin, GPIO_PIN_RESET);
 }

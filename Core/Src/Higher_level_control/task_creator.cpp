@@ -92,16 +92,15 @@ void task_creator(void* param) {
 
 	//Init
 
-
 	Fan* fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
 	Fan* fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin);
 	fan_commands_init(fan_hotend, fan_part_cooling);
 
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
-	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, &htim4, TIM_CHANNEL_1, 1.8, 8, true, PWM, MOTOR_X_FINISHED);
-	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, &htim3, TIM_CHANNEL_1, 1.8, 8, false, PWM, MOTOR_Y_FINISHED);
-	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, &htim2, TIM_CHANNEL_2, 1.8, 8, false, PWM, MOTOR_Z_FINISHED);
-	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, &htim8, TIM_CHANNEL_2, 1.8, 16, false, PWM_N, MOTOR_E_FINISHED);
+	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, nullptr, TIM_CHANNEL_1, 1.8, 8, true, PWM, MOTOR_X_FINISHED);
+	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, nullptr, TIM_CHANNEL_1, 1.8, 8, false, PWM, MOTOR_Y_FINISHED);
+	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, nullptr, TIM_CHANNEL_2, 1.8, 8, false, PWM, MOTOR_Z_FINISHED);
+	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, nullptr, TIM_CHANNEL_2, 1.8, 16, false, PWM_N, MOTOR_E_FINISHED);
 
 	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, motor_X);
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, motor_Y);
@@ -109,7 +108,7 @@ void task_creator(void* param) {
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
 	Descartes_Axis* axis_X = new Descartes_Axis(motor_X, limit_X, 30.0, 280.0, 40, 0);
 	Descartes_Axis* axis_Y = new Descartes_Axis(motor_Y, limit_Y, 60.0, 240.0, 40, 0);
-	Descartes_Axis* axis_Z = new Descartes_Axis(motor_Z, limit_Z, 0.0, 180.0, 40, 0);
+	Descartes_Axis* axis_Z = new Descartes_Axis(motor_Z, limit_Z, 0.0, 180.0, 8, 0);
 	Axis* axis_E = new Axis(motor_E, 4.637);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(axis_X, axis_Y, axis_Z, axis_E);
@@ -123,7 +122,7 @@ void task_creator(void* param) {
 	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//TEST MOTOR
-	char read_instruction[30] = "G1 X10.0 F1000\n";
+	char read_instruction[30] = "G1 X150.0 Y100.0 Z30.0 F4000\n";
 	Command* c = new Command();
 	Command_struct* p_p;
 	c->set_code_and_param_string(read_instruction);

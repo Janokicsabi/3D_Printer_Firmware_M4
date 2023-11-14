@@ -7,7 +7,7 @@
 
 #include "Descartes_Axis.h"
 
-Descartes_Axis::Descartes_Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_endpoint,
+Descartes_Axis::Descartes_Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
 		const float full_rotation_displacement, const uint8_t limit_switch_dir) : Axis(motor, full_rotation_displacement),
 		limit_switch_dir {limit_switch_dir}, workspace_frame_offset {workspace_frame_offset}, axis_length {axis_length}, limit_switch {limit_switch} {
 
