@@ -130,6 +130,8 @@ float ellapsed_time;
 void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, float acc_time) {
 	tick_num = 0;
 	are_steps_done = 0;	//false
+	ellapsed_time = 0;
+	accel_time = acc_time;
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		steps_done[i] = 0;
 		required_steps[i] = step_num[i];
@@ -140,11 +142,10 @@ void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, float acc_t
 		acc_distance[i] = (required_steps[i] * displacement_per_microstep[i]) / 2.0;
 		HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
 	}
-	accel_time = acc_time;
-	ellapsed_time = 0;
 }
 
 uint64_t asd;
+uint32_t worst_time = 0;
 
 void __attribute__((optimize("O3")))motor_linear_acc(TIM_HandleTypeDef *htim) {
 	uint32_t end_time;
@@ -155,13 +156,11 @@ void __attribute__((optimize("O3")))motor_linear_acc(TIM_HandleTypeDef *htim) {
 	float ellapsed_time_squared = ellapsed_time * ellapsed_time;
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		if (required_steps[i] != 0) {
-			start_time = TIM16->CNT;
-			if (steps_done[i] < required_steps[i] / 2.0) {
-				s[i] = (acc[i] / 2.0) * ellapsed_time_squared;
+			if (steps_done[i] < required_steps[i] >> 1) {
+				s[i] = (acc[i] / 2.0f) * ellapsed_time_squared;
 			} else {
-				s[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0) * ellapsed_time_squared;
+				s[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0f) * ellapsed_time_squared;
 			}
-			end_time = TIM16->CNT;
 
 			if (is_step_pin_active[i]) {
 				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
@@ -173,16 +172,110 @@ void __attribute__((optimize("O3")))motor_linear_acc(TIM_HandleTypeDef *htim) {
 				steps_done[i]++;
 				is_step_pin_active[i] = 1;
 
-				if (steps_done[i] == required_steps[i] / 2.0) {
+				if (steps_done[i] == required_steps[i] >> 1) {
 					ellapsed_time = 0;
 				}
-			}
-			if (steps_done[i] == required_steps[i]) {
-				required_steps[i] = 0;
+				if (steps_done[i] == required_steps[i]) {
+					required_steps[i] = 0;
+				}
 			}
 		}
 	}
 
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (required_steps[i] != 0) {
+			end_time = TIM16->CNT;
+			asd += (end_time - start_time);
+			if (worst_time < end_time - start_time) {
+				worst_time = end_time - start_time;
+			}
+			return;
+		}
+	}
+
+	end_time = TIM16->CNT;
+	asd += (end_time - start_time);
+	if (worst_time < end_time - start_time) {
+		worst_time = end_time - start_time;
+	}
+
+	HAL_TIM_Base_Stop_IT(htim);
+}
+
+/*const float time_delay = 0.0001;
+uint32_t tick_num;														//Legyen nullázva mindig az elején
+uint32_t required_steps[NUM_OF_AXES];
+uint32_t steps_done[NUM_OF_AXES];													//Legyen nullázva mindig az elején
+float dist_since_last_step[NUM_OF_AXES];																//Legyen nullázva mindig az elején
+uint8_t is_step_pin_active[NUM_OF_AXES];												//Legyen false mindig az elején
+float acc[NUM_OF_AXES];
+uint8_t are_steps_done;
+float accel_time;
+float v_max_reached[NUM_OF_AXES];
+float acc_distance[NUM_OF_AXES];
+float ellapsed_time;
+uint32_t displacement_per_microstep_int[NUM_OF_AXES];
+
+void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, float acc_time) {
+	tick_num = 0;
+	are_steps_done = 0;	//false
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		steps_done[i] = 0;
+		required_steps[i] = step_num[i];
+		dist_since_last_step[i] = 0;
+		is_step_pin_active[i] = false;
+		acc[i] = accel[i];
+		v_max_reached[i] = acc[i] * accel_time;
+		acc_distance[i] = (required_steps[i] * displacement_per_microstep[i]) / 2.0;
+		HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
+	}
+	accel_time = acc_time;
+	ellapsed_time = 0;
+}
+
+uint64_t asd;
+uint32_t worst_time = 0;
+
+void __attribute__((optimize("O3")))motor_linear_acc(TIM_HandleTypeDef *htim) {
+	uint32_t end_time;
+	tick_num++;
+	uint32_t start_time = TIM16->CNT;
+
+	ellapsed_time += time_delay;
+	float ellapsed_time_squared = ellapsed_time * ellapsed_time;
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (required_steps[i] != 0) {
+			if (steps_done[i] < required_steps[i] >> 1) {
+				dist_since_last_step[i] = (acc[i] / 2.0f) * ellapsed_time_squared;
+			} else {
+				dist_since_last_step[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0f) * ellapsed_time_squared;
+			}
+
+			if (is_step_pin_active[i]) {
+				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
+				is_step_pin_active[i] = 0;
+			}
+
+			if (dist_since_last_step[i] >= displacement_per_microstep[i]) {
+				dist_since_last_step[i] = 0;
+				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_SET);
+				steps_done[i]++;
+				is_step_pin_active[i] = 1;
+
+				if (steps_done[i] == required_steps[i] >> 1) {
+					ellapsed_time = 0;
+				}
+				if (steps_done[i] == required_steps[i]) {
+					required_steps[i] = 0;
+				}
+			}
+		}
+	}
+
+	end_time = TIM16->CNT;
+	if (worst_time < end_time - start_time) {
+		worst_time = end_time - start_time;
+	}
 	asd += (end_time - start_time);
 
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
@@ -191,5 +284,5 @@ void __attribute__((optimize("O3")))motor_linear_acc(TIM_HandleTypeDef *htim) {
 		}
 	}
 	HAL_TIM_Base_Stop_IT(htim);
-}
+}*/
 
