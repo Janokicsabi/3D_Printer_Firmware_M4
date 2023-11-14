@@ -125,7 +125,6 @@ void execute_axis_move_command(Command_struct* command) {
 		current_feedrate = command->f.param_value;
 	}
 
-
 	//TODO Majd elmozdítani!!!
 	float a_max = 100;			//[mm/s^2]
 	float a_used = a_max;
@@ -159,22 +158,5 @@ void execute_axis_move_command(Command_struct* command) {
 	reset_motor_linear_acc_params(step_num_required, acc, acc_time);
 
 	HAL_TIM_Base_Start_IT(&htim16);
-
-	/*if (command->x.is_param_valid) {
-		float move_speed_x = dx / move_time;
-		axis_X->control_axis(move_speed_x, command->x.param_value, is_feedrate_const);
-	}
-	if (command->y.is_param_valid) {
-		float move_speed_y = dy / move_time;
-		axis_Y->control_axis(move_speed_y, command->y.param_value, is_feedrate_const);
-	}
-	if (command->z.is_param_valid) {
-		float move_speed_z = dz / move_time;
-		axis_Z->control_axis(move_speed_z, command->z.param_value, is_feedrate_const);
-	}
-	if (command->e.is_param_valid) {
-		float move_speed_e = de / move_time;
-		axis_E->control_axis(move_speed_e, command->e.param_value, is_feedrate_const);
-	}*/
 }
 

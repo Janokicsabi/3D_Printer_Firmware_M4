@@ -122,7 +122,7 @@ void task_creator(void* param) {
 	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//TEST MOTOR
-	char read_instruction[30] = "G1 X150.0 Y100.0 Z30.0 F4000\n";
+	char read_instruction[100] = "G1 X150.0 Y100.0 Z60.0 F4000\n";
 	Command* c = new Command();
 	Command_struct* p_p;
 	c->set_code_and_param_string(read_instruction);

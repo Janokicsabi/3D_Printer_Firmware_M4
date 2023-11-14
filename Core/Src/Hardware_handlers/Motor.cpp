@@ -78,10 +78,6 @@ void Motor::motor_move_accel(uint32_t step, uint8_t dir, uint32_t time_diff) {
 }
 
 void Motor::change_motor_dir_pin(uint8_t new_dir) {
-	if (new_dir == this->move_dir) {
-		return;
-	}
-
 	this->move_dir = new_dir;
 	if (new_dir == 0) {
 		HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET);
