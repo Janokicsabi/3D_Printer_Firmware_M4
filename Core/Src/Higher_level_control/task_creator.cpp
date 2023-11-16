@@ -14,7 +14,6 @@
 #include "semphr.h"
 
 //Other file includes
-#include <Motor.h>
 #include <Fan.h>
 #include <Axis.h>
 #include <Descartes_Axis.h>
@@ -29,6 +28,7 @@
 #include "G_code_reader.h"
 #include "Temp_controller.h"
 #include <cpp_callback_wrap.h>
+#include <Stepper.h>
 
 //Hardware pointers
 extern ADC_HandleTypeDef hadc1;
@@ -42,6 +42,7 @@ extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern TIM_HandleTypeDef htim8;
+extern TIM_HandleTypeDef htim16;
 
 //Hardware
 SD_card* sd_card;
@@ -97,21 +98,21 @@ void task_creator(void* param) {
 	fan_commands_init(fan_hotend, fan_part_cooling);
 
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
-	Motor* motor_X = new Motor(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, nullptr, TIM_CHANNEL_1, 1.8, 8, true, PWM, MOTOR_X_FINISHED);
-	Motor* motor_Y = new Motor(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, nullptr, TIM_CHANNEL_1, 1.8, 8, false, PWM, MOTOR_Y_FINISHED);
-	Motor* motor_Z = new Motor(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, nullptr, TIM_CHANNEL_2, 1.8, 8, false, PWM, MOTOR_Z_FINISHED);
-	Motor* motor_E = new Motor(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, nullptr, TIM_CHANNEL_2, 1.8, 16, false, PWM_N, MOTOR_E_FINISHED);
+	Stepper* stepper_X = new Stepper(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, 1.8, 8);
+	Stepper* stepper_Y = new Stepper(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, 1.8, 8);
+	Stepper* stepper_Z = new Stepper(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, 1.8, 8);
+	Stepper* stepper_E = new Stepper(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, 1.8, 16);
 
-	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, motor_X);
-	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, motor_Y);
-	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, motor_Z);
+	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, stepper_X);
+	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, stepper_Y);
+	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, stepper_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Descartes_Axis* axis_X = new Descartes_Axis(motor_X, limit_X, 30.0, 280.0, 40, 0);
-	Descartes_Axis* axis_Y = new Descartes_Axis(motor_Y, limit_Y, 60.0, 240.0, 40, 0);
-	Descartes_Axis* axis_Z = new Descartes_Axis(motor_Z, limit_Z, 0.0, 180.0, 8, 0);
-	Axis* axis_E = new Axis(motor_E, 4.637);
+	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 30.0, 280.0, 40, 0, 2000, 7800);
+	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 60.0, 240.0, 40, 0, 200, 4000);
+	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 500, 5000);
+	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
-	axis_commands_init(axis_X, axis_Y, axis_Z, axis_E);
+	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);
 
 	Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
 	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 6.25, 0.0767, 81.46, 2.0, false);
@@ -122,13 +123,34 @@ void task_creator(void* param) {
 	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//TEST MOTOR
-	char read_instruction[100] = "G1 X150.0 Y100.0 Z60.0 F4000\n";
+	//char read_instruction[100] = "G1 X150.0 Y100.0 Z60.0 F4000\n";
+	char read_instruction[100] = "G1 Z10.0 F1000\n";
 	Command* c = new Command();
 	Command_struct* p_p;
 	c->set_code_and_param_string(read_instruction);
 	c->extract_params_from_command_string();
 	p_p = c->get_params();
+	xEventGroupClearBits(command_state, READY_FOR_NEXT_COMMAND);
 	execute_G1(p_p);
+
+	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
+
+	char read_instruction2[100] = "G1 X150.0 F7800\n";
+	c->set_code_and_param_string(read_instruction2);
+	c->extract_params_from_command_string();
+	p_p = c->get_params();
+	xEventGroupClearBits(command_state, READY_FOR_NEXT_COMMAND);
+	execute_G1(p_p);
+
+	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
+
+	char read_instruction3[100] = "G28\n";
+	c->set_code_and_param_string(read_instruction3);
+	c->extract_params_from_command_string();
+	p_p = c->get_params();
+	execute_G28(p_p);
+
+	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
 
 	//TEST FAN
 	/*char read_instruction[30] = "M106 S229.5\n";

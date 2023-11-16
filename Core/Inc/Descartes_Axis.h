@@ -18,13 +18,14 @@ private:
 	const float axis_length;					//The distance from motor possible endpoint to other in millimeter
 
 public:
-	Descartes_Axis(Motor* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
-			const float full_rotation_displacement, const uint8_t limit_switch_dir);
+	Descartes_Axis(Stepper* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
+			const float full_rotation_displacement, const uint8_t limit_switch_dir, float max_acc, float max_speed);
 	virtual ~Descartes_Axis();
 
 	float saturate_position(float new_pos);
+	uint8_t get_limit_switch_dir();
 	Limit_switch* get_limit_switch();
-	void home_axis(float move_speed);
+	bool can_motor_move(uint8_t move_dir);
 };
 
 #endif /* DESCARTES_AXIS_H_ */

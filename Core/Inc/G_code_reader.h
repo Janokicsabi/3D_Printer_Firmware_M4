@@ -13,7 +13,7 @@ using namespace std;
 
 #include "sd_card.h"
 #include "task_creator.h"
-#include "Motor.h"
+#include "Stepper.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

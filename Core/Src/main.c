@@ -145,7 +145,7 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 4096);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 8192);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -629,7 +629,7 @@ static void MX_TIM16_Init(void)
   htim16.Instance = TIM16;
   htim16.Init.Prescaler = 0;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 8000 - 1;
+  htim16.Init.Period = 4000 - 1;
   htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim16.Init.RepetitionCounter = 0;
   htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -758,7 +758,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
-	cpp_wrap_motor_pwm_callback(htim);
 	cpp_wrap_heater_pwm_callback(htim);
 }
 
@@ -801,10 +800,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   else if (htim->Instance == TIM16) {
-	  motor_linear_acc(htim);
+	  callback_motor(htim);
   }
   else {
-	  cpp_wrap_motor_timer_callback(htim);
 	  cpp_wrap_heater_timer_callback(htim);
   }
   /* USER CODE END Callback 1 */

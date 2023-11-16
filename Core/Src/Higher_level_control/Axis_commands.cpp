@@ -6,7 +6,7 @@
  */
 
 #include <Axis_commands.h>
-#include "Motor.h"
+
 #include "Axis.h"
 #include "Descartes_Axis.h"
 #include "task_creator.h"
@@ -23,6 +23,7 @@
 #include <functional>
 #include <map>
 #include <math.h>
+#include <Stepper.h>
 #include <string>
 #include <string.h>
 using namespace std;
@@ -33,28 +34,26 @@ static Descartes_Axis* axis_Y;
 static Descartes_Axis* axis_Z;
 static Axis* axis_E;
 
-extern TIM_HandleTypeDef htim16;
+static TIM_HandleTypeDef* motor_timer;
 
 extern EventGroupHandle_t command_state;
 
 
-void axis_commands_init(Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descartes_Axis* axis_z, Axis* axis_e) {
+void axis_commands_init(TIM_HandleTypeDef* timer, Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descartes_Axis* axis_z, Axis* axis_e) {
 	//TODO Átgondolni, hogy ez itt legyen-e
-	Motor::enable_motors();
+	Stepper::enable_steppers();
 	current_feedrate = 0.0f;
 
 	axis_X = axis_x;
 	axis_Y = axis_y;
 	axis_Z = axis_z;
 	axis_E = axis_e;
+	motor_timer = timer;
 }
 
 void execute_G1(Command_struct* command) {
 	//Move end effector from point to point in a linear line
 	execute_axis_move_command(command);
-	xEventGroupWaitBits(Motor::event_motor_standing, MOTOR_X_FINISHED | MOTOR_Y_FINISHED |
-			  MOTOR_Z_FINISHED | MOTOR_E_FINISHED, pdFALSE, pdTRUE, portMAX_DELAY);
-	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_G21(Command_struct* command) {
@@ -65,11 +64,12 @@ void execute_G21(Command_struct* command) {
 
 void execute_G28(Command_struct* command) {
 	//Home all axis
-	const float HOME_MOVE_SPEED = 2000;
-	axis_X->home_axis(HOME_MOVE_SPEED);
-	xEventGroupWaitBits(Motor::event_motor_standing, MOTOR_X_FINISHED | MOTOR_Y_FINISHED |
-			  MOTOR_Z_FINISHED | MOTOR_E_FINISHED, pdFALSE, pdTRUE, portMAX_DELAY);
-	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
+	//TODO EZT MEGCSINÁLNI
+	reset_motors_home_params();
+	axis_X->get_motor()->change_stepper_dir_pin(axis_X->get_limit_switch_dir());
+	axis_Y->get_motor()->change_stepper_dir_pin(axis_Y->get_limit_switch_dir());
+	axis_Z->get_motor()->change_stepper_dir_pin(axis_Z->get_limit_switch_dir());
+	HAL_TIM_Base_Start_IT(motor_timer);
 }
 
 void execute_G90(Command_struct* command) {
@@ -103,46 +103,16 @@ void execute_M82(Command_struct* command) {
 
 void execute_M84(Command_struct* command) {
 	//Disable motors
-	Motor::disable_motors();
+	Stepper::disable_steppers();
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
 void execute_axis_move_command(Command_struct* command) {
-	//TODO speed számítás ellenőriz
-	//TODO Probléma: gyorsítás esetén nem lesz jó, ha nem maximális feed rate sebességgel mozgott
-	float current_x_pos = axis_X->get_axis_pos();
-	float current_y_pos = axis_Y->get_axis_pos();
-	float current_z_pos = axis_Z->get_axis_pos();
-	float current_e_pos = axis_E->get_axis_pos();
-
 	float dx, dy, dz, de;
-	(command->x.is_param_valid) ? dx = abs(command->x.param_value - current_x_pos) : dx = 0.0f;
-	(command->y.is_param_valid) ? dy = abs(command->y.param_value - current_y_pos) : dy = 0.0f;
-	(command->z.is_param_valid) ? dz = abs(command->z.param_value - current_z_pos) : dz = 0.0f;
-	(command->e.is_param_valid) ? de = abs(command->e.param_value - current_e_pos) : de = 0.0f;
-
-	if (command->f.is_param_valid) {
-		current_feedrate = command->f.param_value;
-	}
-
-	//TODO Majd elmozdítani!!!
-	float a_max = 100;			//[mm/s^2]
-	float a_used = a_max;
-	float max_dist = fmax(fmax(dx, dy), dz);
-	float acc_time = sqrt(max_dist / a_max);
-	//Time to reach the maximum speed (feed rate)
-	float feed_rate_mm_s = current_feedrate / 60.0f;
-	float time_to_v_max = feed_rate_mm_s / a_max;
-	if (time_to_v_max < acc_time) {
-		a_used = (feed_rate_mm_s * feed_rate_mm_s) / max_dist;
-		acc_time = sqrt(max_dist / a_used);
-	}
-
-	float a_x = dx / (acc_time * acc_time);
-	float a_y = dy / (acc_time * acc_time);
-	float a_z = dz / (acc_time * acc_time);
-	float a_e = de / (acc_time * acc_time);
-	float acc[NUM_OF_AXES] = {a_x, a_y, a_z, a_e};
+	(command->x.is_param_valid) ? dx = abs(command->x.param_value - axis_X->get_axis_pos()) : dx = 0.0f;
+	(command->y.is_param_valid) ? dy = abs(command->y.param_value - axis_Y->get_axis_pos()) : dy = 0.0f;
+	(command->z.is_param_valid) ? dz = abs(command->z.param_value - axis_Z->get_axis_pos()) : dz = 0.0f;
+	(command->e.is_param_valid) ? de = abs(command->e.param_value - axis_E->get_axis_pos()) : de = 0.0f;
 
 	uint32_t step_num_required[NUM_OF_AXES];
 	dx != 0 ? step_num_required[0] = axis_X->calculate_step_num(command->x.param_value) : step_num_required[0] = 0;
@@ -150,13 +120,36 @@ void execute_axis_move_command(Command_struct* command) {
 	dz != 0 ? step_num_required[2] = axis_Z->calculate_step_num(command->z.param_value) : step_num_required[2] = 0;
 	de != 0 ? step_num_required[3] = axis_E->calculate_step_num(command->e.param_value) : step_num_required[3] = 0;
 
-	if (dx!=0) axis_X->get_motor()->change_motor_dir_pin(axis_X->calculate_dir(command->x.param_value));
-	if (dy!=0) axis_Y->get_motor()->change_motor_dir_pin(axis_Y->calculate_dir(command->y.param_value));
-	if (dz!=0) axis_Z->get_motor()->change_motor_dir_pin(axis_Z->calculate_dir(command->z.param_value));
-	if (de!=0) axis_E->get_motor()->change_motor_dir_pin(axis_E->calculate_dir(command->e.param_value));
+	uint8_t dir_x, dir_y, dir_z, dir_e;
+	dir_x = axis_X->calculate_dir(command->x.param_value);
+	dir_y = axis_Y->calculate_dir(command->y.param_value);
+	dir_z = axis_Z->calculate_dir(command->z.param_value);
+	dir_e = axis_E->calculate_dir(command->e.param_value);
+	uint8_t dirs[] = {dir_x, dir_y, dir_z, dir_e};
+	if (dx!=0) axis_X->get_motor()->change_stepper_dir_pin(dir_x);
+	if (dy!=0) axis_Y->get_motor()->change_stepper_dir_pin(dir_y);
+	if (dz!=0) axis_Z->get_motor()->change_stepper_dir_pin(dir_z);
+	if (de!=0) axis_E->get_motor()->change_stepper_dir_pin(dir_e);
 
-	reset_motor_linear_acc_params(step_num_required, acc, acc_time);
+	if (command->f.is_param_valid) {
+		current_feedrate = command->f.param_value;
+	}
 
-	HAL_TIM_Base_Start_IT(&htim16);
+	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
+	float travel_distances[] = {dx, dy, dz, de};
+	float max_acc_time = 0;
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		float acc_time = axes[i]->time_to_reach_speed_max_accel(current_feedrate, travel_distances[i]);
+		if (acc_time > max_acc_time) {
+			max_acc_time = acc_time;
+		}
+	}
+	float acc[NUM_OF_AXES];
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		acc[i] = axes[i]->acceleration_for_time_and_distance(max_acc_time, travel_distances[i]);
+	}
+
+	reset_motor_linear_acc_params(step_num_required, acc, max_acc_time, dirs);
+	HAL_TIM_Base_Start_IT(motor_timer);
 }
 

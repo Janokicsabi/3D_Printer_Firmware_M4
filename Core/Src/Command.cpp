@@ -35,7 +35,7 @@ bool Command::set_code_and_param_string(char* full_instruction_line) {
 	}
 
 	uint32_t pos = 0;
-	while(full_instruction_line[pos] != ' ') {
+	while(full_instruction_line[pos] != ' ' && full_instruction_line[pos] != '\n') {
 		pos++;
 	}
 	memset(params.command_code, 0, MAX_COMMAND_SIZE);

@@ -9,9 +9,11 @@
 #include <cmath>
 
 
-Axis::Axis(Motor* motor, const float full_rotation_displacement) {
+Axis::Axis(Stepper* motor, const float full_rotation_displacement, float max_acc, float max_speed) {
 	this->motor = motor;
 	this->pos_in_ws_frame = 0.0f;
+	this->max_acc = max_acc;
+	this->max_speed = max_speed;
 
 	float full_step_degrees = motor->get_full_step_degree();
 	float microstep_devider = motor->get_microstep_devider();
@@ -41,7 +43,7 @@ const float Axis::get_axis_pos() {
 	return this->pos_in_ws_frame;
 }
 
-Motor* Axis::get_motor() {
+Stepper* Axis::get_motor() {
 	return this->motor;
 }
 
@@ -49,7 +51,7 @@ const float Axis::get_one_step_displacement() {
 	return this->displacement_per_microstep;
 }
 
-void Axis::control_axis(float move_speed, float new_pos, bool is_feedrate_const) {
+void Axis::control_axis_pwm(float move_speed, float new_pos, bool is_feedrate_const) {
 	//The position is the same, so no motor movement required
 	if (!this->is_position_changed(new_pos)) {
 		return;
@@ -58,16 +60,8 @@ void Axis::control_axis(float move_speed, float new_pos, bool is_feedrate_const)
 	this->motor->set_motor_speed(move_speed, this->displacement_per_microstep);
 	uint8_t dir = this->calculate_dir(new_pos);
 	uint32_t step_num = this->calculate_step_num(new_pos);
-	//TODO Visszaállítani
-	//if (is_feedrate_const) {
 	this->motor->motor_move_const(step_num, dir);
 	update_position(new_pos);
-	//}
-	//else {
-	//	uint32_t previous_timer_period = motor_map[motor_num]->calculate_motor_timer_period_from_speed(prev_motor_parameters.f, motor_map[motor_num]->get_displacement_per_microstep());
-	//	uint32_t feedrate_accel_time_diff = (timer_period - previous_timer_period) / (float)step_num;
-	//	motor_map[motor_num]->motor_move_accel(step_num, dir, feedrate_accel_time_diff);
-	//}
 }
 
 const bool Axis::is_position_changed(float new_pos) {
@@ -88,6 +82,29 @@ float Axis::saturate_position(float new_pos) {
 
 Limit_switch* Axis::get_limit_switch() {
 	return nullptr;
+}
+
+float Axis::time_to_reach_speed_max_accel(float desired_speed_mm_p_min, float distance_to_move) {
+	if (desired_speed_mm_p_min > max_speed) {
+		desired_speed_mm_p_min = max_speed;
+	}
+	float desired_speed = convert_feedrate_to_mm_p_s(desired_speed_mm_p_min);
+	float acc_time = sqrt(distance_to_move / max_acc);
+	float time_to_reach_desired_speed = desired_speed / max_acc;
+	if (time_to_reach_desired_speed < acc_time) {
+		float a_used = pow(desired_speed, 2) / distance_to_move;
+		acc_time = sqrt(distance_to_move / a_used);
+	}
+	return acc_time;
+}
+
+
+float Axis::acceleration_for_time_and_distance(float acc_time, float distance_to_move) {
+	return distance_to_move / (acc_time * acc_time);
+}
+
+float Axis::convert_feedrate_to_mm_p_s(float feedrate_mm_p_min) {
+	return feedrate_mm_p_min / SECONDS_IN_A_MINUTE;
 }
 
 

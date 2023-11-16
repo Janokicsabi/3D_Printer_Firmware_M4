@@ -1,18 +1,17 @@
 /*
- * Motor.cpp
+ * MotorPWM.cpp
  *
  *  Created on: Oct 15, 2023
  *      Author: janok
  */
 
-#include "Motor.h"
-
+#include <MotorPWM.h>
 #include <cmath>
 
 
-EventGroupHandle_t Motor::event_motor_standing = xEventGroupCreate();
+EventGroupHandle_t MotorPWM::event_motor_standing = xEventGroupCreate();
 
-Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0, TIM_HandleTypeDef* timer = NULL,
+MotorPWM::MotorPWM(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0, TIM_HandleTypeDef* timer = NULL,
 		uint32_t timer_channel = 0, float full_step_degree = 1.8, uint32_t microstep_devider = 1, bool is_soft_pwm = false, PWM_type pwm_type = PWM, uint32_t motor_event_bit = 0) {
 	this->step_port = step_port;
 	this->step_pin = step_pin;
@@ -33,7 +32,7 @@ Motor::Motor(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef
 	this->change_motor_dir_pin(0);
 }
 
-Motor::Motor() {
+MotorPWM::MotorPWM() {
 	this->step_port = NULL;
 	this->step_pin = 0;
 	this->dir_port = NULL;
@@ -46,25 +45,25 @@ Motor::Motor() {
 	this->pwm_type = PWM;
 }
 
-Motor::~Motor() {
+MotorPWM::~MotorPWM() {
 
 }
 
 
-void Motor::motor_move_const(uint32_t step, uint8_t dir) {
+void MotorPWM::motor_move_const(uint32_t step, uint8_t dir) {
 	this->remaining_steps = (int32_t)step;
 	change_motor_dir_pin(dir);
 	this->feedrate_accel_time_diff = 0;
 	this->start_motor_timer();
 }
 
-void Motor::set_motor_speed(float move_speed, float one_step_displacement) {
+void MotorPWM::set_motor_speed(float move_speed, float one_step_displacement) {
 	this->motor_speed = move_speed;
 	uint32_t timer_period = calculate_motor_timer_period_from_speed(move_speed, one_step_displacement);
 	set_motor_timer_period(timer_period);
 }
 
-void Motor::motor_move_accel(uint32_t step, uint8_t dir, uint32_t time_diff) {
+void MotorPWM::motor_move_accel(uint32_t step, uint8_t dir, uint32_t time_diff) {
 	GPIO_PinState limitState;
 	limitState = HAL_GPIO_ReadPin(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin);
 	if (limitState == GPIO_PIN_RESET  && dir == 0) {
@@ -77,7 +76,7 @@ void Motor::motor_move_accel(uint32_t step, uint8_t dir, uint32_t time_diff) {
 	this->start_motor_timer();
 }
 
-void Motor::change_motor_dir_pin(uint8_t new_dir) {
+void MotorPWM::change_motor_dir_pin(uint8_t new_dir) {
 	this->move_dir = new_dir;
 	if (new_dir == 0) {
 		HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET);
@@ -90,7 +89,7 @@ void Motor::change_motor_dir_pin(uint8_t new_dir) {
 //			so the printer can move continuously with the required speed
 //@param	move_speed	The required travelling speed [mm/min]
 //TODO: Nem itt kellene a prescaler-t állítani, valahogy kiszervez függvénybe vagy ilyenek
-const uint32_t Motor::calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement) {
+const uint32_t MotorPWM::calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement) {
 	uint32_t timer_clk_freq = HAL_RCC_GetPCLK2Freq();	//[Hz]
 	uint32_t maxTimerValue = this->timer->Instance->ARR;
 	uint32_t motor_timer_period = 0;
@@ -113,7 +112,7 @@ const uint32_t Motor::calculate_motor_timer_period_from_speed(uint32_t move_spee
 //TODO: Ahol nincs hardware PWM ott szoftveres kell
 //TODO: Megnézni, hogy ez jól frissíti-e a Timer period-ot. Ha nem, akkor USER_CONSTANT kell!!!
 //Ha nem jó a CCR1 beállítás, akkor: __HAL_TIM_SET_COMPARE();
-void Motor::set_motor_timer_period(uint32_t timer_period) {
+void MotorPWM::set_motor_timer_period(uint32_t timer_period) {
 	this->timer->Init.Period = timer_period;
 
 	uint32_t auto_reload_value = (uint32_t)(timer_period / 2.0);
@@ -137,7 +136,7 @@ void Motor::set_motor_timer_period(uint32_t timer_period) {
 	}
 }
 
-void Motor::start_motor_timer() {
+void MotorPWM::start_motor_timer() {
 	HAL_TIM_Base_Init(this->timer);
 	HAL_TIM_Base_Start_IT(this->timer);
 	if (this->pwm_type == PWM) {
@@ -148,7 +147,7 @@ void Motor::start_motor_timer() {
 	xEventGroupClearBits(event_motor_standing, this->motor_event_bit);
 }
 
-void Motor::stop_motor_timer() {
+void MotorPWM::stop_motor_timer() {
 	HAL_TIM_Base_Stop_IT(this->timer);
 	if (this->pwm_type == PWM) {
 		HAL_TIM_PWM_Stop_IT(this->timer, this->timer_channel);
@@ -161,15 +160,11 @@ void Motor::stop_motor_timer() {
 	}
 }
 
-void Motor::motor_PWM_callback() {
+void MotorPWM::motor_PWM_callback() {
 	HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_RESET);
 }
 
-void Motor::motor_timer_callback() {
-	/*if (this->feedrate_accel_time_diff != 0) {
-		this->set_motor_timer_period(this->timer->Init.Period + this->feedrate_accel_time_diff);
-	}*/
-
+void MotorPWM::motor_timer_callback() {
 	if (this->is_soft_pwm) {
 		HAL_GPIO_WritePin(step_port, step_pin, GPIO_PIN_SET);
 	}
@@ -180,23 +175,23 @@ void Motor::motor_timer_callback() {
 	}
 }
 
-const uint32_t Motor::get_microstep_devider() {
+const uint32_t MotorPWM::get_microstep_devider() {
 	return this->microstep_devider;
 }
 
-TIM_HandleTypeDef* Motor::get_timer() {
+TIM_HandleTypeDef* MotorPWM::get_timer() {
 	return this->timer;
 }
 
-const bool Motor::get_is_soft_pwm() {
+const bool MotorPWM::get_is_soft_pwm() {
 	return this->is_soft_pwm;
 }
 
-const float Motor::get_full_step_degree() {
+const float MotorPWM::get_full_step_degree() {
 	return this->full_step_degree;
 }
 
-const bool Motor::is_motor_moving() {
+const bool MotorPWM::is_motor_moving() {
 	EventBits_t motor_status = xEventGroupGetBits(event_motor_standing);
 	if ((motor_status & this->motor_event_bit) != 0) {
 		return false;
@@ -204,19 +199,19 @@ const bool Motor::is_motor_moving() {
 	return true;
 }
 
-GPIO_TypeDef* Motor::get_step_port() {
+GPIO_TypeDef* MotorPWM::get_step_port() {
 	return this->step_port;
 }
 
-uint16_t Motor::get_step_pin() {
+uint16_t MotorPWM::get_step_pin() {
 	return this->step_pin;
 }
 
-void Motor::enable_motors() {
+void MotorPWM::enable_motors() {
 	HAL_GPIO_WritePin(EN_Motor_GPIO_Port, EN_Motor_Pin, GPIO_PIN_RESET);
 }
 
-void Motor::disable_motors() {
+void MotorPWM::disable_motors() {
 	HAL_GPIO_WritePin(EN_Motor_GPIO_Port, EN_Motor_Pin, GPIO_PIN_SET);
 }
 
