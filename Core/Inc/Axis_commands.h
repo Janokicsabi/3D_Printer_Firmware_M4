@@ -24,8 +24,9 @@ void execute_G90(Command_struct* command);
 void execute_G92(Command_struct* command);
 void execute_M82(Command_struct* command);
 void execute_M84(Command_struct* command);
-void task_wait_for_stepper_stop(void* params);
 int32_t get_command_index(char* code);
 void execute_axis_move_command(Command_struct* new_axis_params);
+float get_max_accel_time(Axis* axes[], float* travel_distances);
+void adjust_accel_to_time(Axis* axes[], float* accel, float* travel_distances, float accel_time);
 
 #endif /* SRC_AXISCOMMANDS_H_ */

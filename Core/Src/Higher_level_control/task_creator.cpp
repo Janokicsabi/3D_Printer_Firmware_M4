@@ -89,7 +89,7 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	sd_card->open_file("test1");
+	sd_card->open_file("test");
 
 	//Init
 
@@ -107,50 +107,24 @@ void task_creator(void* param) {
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, stepper_Y);
 	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, stepper_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 30.0, 280.0, 40, 0, 2000, 7800);
-	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 60.0, 240.0, 40, 0, 200, 4000);
-	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 500, 5000);
+	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 5.0, 280.0, 40, 0, 2000, 7800);
+	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 5.0, 240.0, 40, 0, 200, 2000);
+	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 500, 3000);
 	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);
 
+	//TEMP_CONTROL
 	Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
-	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 6.25, 0.0767, 81.46, 2.0, false);
+	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
 	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
+	init_thermistor(&hadc1, &hadc2);
+	temp_commands_init(hotend_heater, bed_heater);
 
 	//TEST GCode reader & RTOS queue
-	//xTaskCreate(task_fill_message_queue, "G_CODE_READER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
-	//xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_fill_message_queue, "G_CODE_READER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
-	//TEST MOTOR
-	//char read_instruction[100] = "G1 X150.0 Y100.0 Z60.0 F4000\n";
-	char read_instruction[100] = "G1 Z10.0 F1000\n";
-	Command* c = new Command();
-	Command_struct* p_p;
-	c->set_code_and_param_string(read_instruction);
-	c->extract_params_from_command_string();
-	p_p = c->get_params();
-	xEventGroupClearBits(command_state, READY_FOR_NEXT_COMMAND);
-	execute_G1(p_p);
-
-	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
-
-	char read_instruction2[100] = "G1 X150.0 F7800\n";
-	c->set_code_and_param_string(read_instruction2);
-	c->extract_params_from_command_string();
-	p_p = c->get_params();
-	xEventGroupClearBits(command_state, READY_FOR_NEXT_COMMAND);
-	execute_G1(p_p);
-
-	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
-
-	char read_instruction3[100] = "G28\n";
-	c->set_code_and_param_string(read_instruction3);
-	c->extract_params_from_command_string();
-	p_p = c->get_params();
-	execute_G28(p_p);
-
-	xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdTRUE, pdFALSE, portMAX_DELAY);
 
 	//TEST FAN
 	/*char read_instruction[30] = "M106 S229.5\n";
@@ -160,39 +134,6 @@ void task_creator(void* param) {
 	c->extract_params_from_command_string();
 	p_p = c->get_params();
 	execute_M106(p_p);*/
-
-	//TEST TEMP_CONTROL
-	/*Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
-	//TODO Ezeket a paramétereket megállapítani!!!
-	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
-	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
-	init_thermistor(&hadc1, &hadc2);
-	temp_commands_init(hotend_heater, bed_heater);
-	char read_instruction[30] = "M140 S40\n";
-	Command* c = new Command();
-	Command_struct* p_p;
-	c->set_code_and_param_string(read_instruction);
-	c->extract_params_from_command_string();
-	p_p = c->get_params();
-	execute_M190(p_p);*/
-
-	//TEST HEAT BED
-	/*
-	init_thermistor(&hadc1, &hadc2);
-	bed_heater->set_duty_cycle(70.0);
-	uint32_t i = 0;
-	bed_heater->heater_timer_start();
-	while(current_temp_bed < 70.0f && i < 200) {
-        HAL_ADC_Start(&hadc2);
-        HAL_ADC_PollForConversion(&hadc2, 1);
-        float current_adc_bed = HAL_ADC_GetValue(&hadc2);
-        current_temp_bed = convert_temperature(current_adc_bed);
-        bed_temp_array_big[i] = current_temp_bed;
-        i++;
-		HAL_Delay(1000);
-	}
-	bed_heater->heater_timer_stop();
-	int asd = 0;*/
 
 	/*
 	//Tasks

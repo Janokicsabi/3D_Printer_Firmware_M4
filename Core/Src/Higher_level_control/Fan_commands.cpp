@@ -36,5 +36,6 @@ void execute_M107(Command_struct* command) {
 	//Turn off fan
 	hotend_fan->turn_off_fan();
 	part_cooling_fan->turn_off_fan();
+	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 

@@ -266,8 +266,8 @@ float acc_time[NUM_OF_DESCARTES_AXES];
 
 void reset_motors_home_params() {
 	motor_move_type = HOME;
-	home_acc = 50;
-	home_max_speed = 15;		//mm/s
+	home_acc = 1;				//mm/s^2
+	home_max_speed = 2;			//mm/s
 	ellapsed_time = 0;
 	tick_num = 0;
 	for (uint32_t i = 0; i < NUM_OF_DESCARTES_AXES; i++) {
@@ -325,10 +325,6 @@ void callback_motors_home(TIM_HandleTypeDef *htim) {
 	}
 
 	for (uint32_t i = 0; i < NUM_OF_DESCARTES_AXES; i++) {
-		if (is_moving_local[i] == 0) {
-			return;
-		}
-
 		if (is_moving_local[i] != 0) {
 			end_time = TIM16->CNT;
 			asd += (end_time - start_time);

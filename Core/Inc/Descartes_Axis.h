@@ -22,6 +22,7 @@ public:
 			const float full_rotation_displacement, const uint8_t limit_switch_dir, float max_acc, float max_speed);
 	virtual ~Descartes_Axis();
 
+	void set_home_position();
 	float saturate_position(float new_pos);
 	uint8_t get_limit_switch_dir();
 	Limit_switch* get_limit_switch();

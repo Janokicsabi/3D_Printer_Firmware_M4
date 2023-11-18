@@ -76,6 +76,10 @@ void Axis::update_position(float new_pos) {
 	this->pos_in_ws_frame = new_pos;
 }
 
+void Axis::set_home_position() {
+	this->pos_in_ws_frame = 0.0f;
+}
+
 float Axis::saturate_position(float new_pos) {
 	return new_pos;
 }

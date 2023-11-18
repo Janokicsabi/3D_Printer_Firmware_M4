@@ -29,6 +29,10 @@ float Descartes_Axis::saturate_position(float new_pos) {
 	return new_pos;
 }
 
+void Descartes_Axis::set_home_position() {
+	this->pos_in_ws_frame = -workspace_frame_offset;
+}
+
 Limit_switch* Descartes_Axis::get_limit_switch() {
 	return this->limit_switch;
 }

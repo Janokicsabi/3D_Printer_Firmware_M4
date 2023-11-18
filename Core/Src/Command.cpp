@@ -8,21 +8,11 @@
 #include "Command.h"
 #include <cstring>
 #include <stdlib.h>
+#include <ctype.h>
 
 
 Command::Command() {
-	params.x.param_value = 0.0f;
-	params.x.is_param_valid = false;
-	params.y.param_value = 0.0f;
-	params.y.is_param_valid = false;
-	params.z.param_value = 0.0f;
-	params.z.is_param_valid = false;
-	params.e.param_value = 0.0f;
-	params.e.is_param_valid = false;
-	params.f.param_value = 0.0f;
-	params.f.is_param_valid = false;
-	params.s.param_value = 0.0f;
-	params.s.is_param_valid = false;
+	this->invalidate_all_params();
 }
 
 Command::~Command() {
@@ -34,68 +24,68 @@ bool Command::set_code_and_param_string(char* full_instruction_line) {
 		return false;
 	}
 
-	uint32_t pos = 0;
-	while(full_instruction_line[pos] != ' ' && full_instruction_line[pos] != '\n') {
-		pos++;
-	}
+	uint32_t inst_code_end_pos = find_command_code_end_char(full_instruction_line);
+	uint32_t param_start_pos = find_param_start_char(full_instruction_line);
+	uint32_t end_pos = find_instruction_end_char(full_instruction_line);
 	memset(params.command_code, 0, MAX_COMMAND_SIZE);
 	memset(params_string, 0, MAX_PARAM_SIZE);
-	strncpy(params.command_code, full_instruction_line, pos);
-	//TODO ITT ellenőrizni, hogy a +1 jól működik-e!!!
-	strncpy(params_string, full_instruction_line + pos + 1, find_instruction_end_char(full_instruction_line) - pos);
+	strncpy(params.command_code, full_instruction_line, inst_code_end_pos);
+	strncpy(params_string, full_instruction_line + param_start_pos, end_pos - param_start_pos);
 	return true;
 }
 
+int32_t Command::find_param_start_char(char* full_instruction_line) {
+    int32_t i = 0;
+    while (full_instruction_line[i] != '\0') {
+        if (full_instruction_line[i] == ' ') {
+        	return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+uint32_t Command::find_command_code_end_char(char* full_instruction_line) {
+    uint32_t i = 0;
+    while (isalnum(full_instruction_line[i]) && full_instruction_line[i] != '\0') {
+        i++;
+    }
+    return i;
+}
+
 void Command::extract_params_from_command_string() {
-	char* token = strtok(params_string, " ");
 	invalidate_all_params();
+	char* token = strtok(params_string, " ");
 
     while (token != nullptr) {
         char param_key = token[0];
-        if (param_key == 'X') {
-        	//TODO Itt gond lehet a +1-el, nem tudom, extrán figyelni rá teszteléskor!!!
-            params.x.param_value = strtof(token + 1, nullptr);
-            params.x.is_param_valid = true;
-        } else if (param_key == 'Y') {
-            params.y.param_value = strtof(token + 1, nullptr);
-            params.y.is_param_valid = true;
-        } else if (param_key == 'Z') {
-            params.z.param_value = strtof(token + 1, nullptr);
-            params.z.is_param_valid = true;
-        } else if (param_key == 'E') {
-            params.e.param_value = strtof(token + 1, nullptr);
-            params.e.is_param_valid = true;
-        } else if (param_key == 'F') {
-            params.f.param_value = strtof(token + 1, nullptr);
-            params.f.is_param_valid = true;
-        } else if (param_key == 'S') {
-            params.s.param_value = strtof(token + 1, nullptr);
-            params.s.is_param_valid = true;
-        } else {
-        	//ERROR: Unknown parameter
-        }
+        if (param_key == 'X') params.x = strtof(token + 1, nullptr);
+        if (param_key == 'Y') params.y = strtof(token + 1, nullptr);
+        if (param_key == 'Z') params.z = strtof(token + 1, nullptr);
+        if (param_key == 'E') params.e = strtof(token + 1, nullptr);
+        if (param_key == 'F') params.f = strtof(token + 1, nullptr);
+        if (param_key == 'S') params.s = strtof(token + 1, nullptr);
         token = strtok(nullptr, " ");
     }
 }
 
 void Command::invalidate_all_params() {
-	params.x.is_param_valid = false;
-	params.y.is_param_valid = false;
-	params.z.is_param_valid = false;
-	params.e.is_param_valid = false;
-	params.f.is_param_valid = false;
-	params.s.is_param_valid = false;
+	params.x = INVALID_COMMAND_PARAM;
+	params.y = INVALID_COMMAND_PARAM;
+	params.z = INVALID_COMMAND_PARAM;;
+	params.e = INVALID_COMMAND_PARAM;
+	params.f = INVALID_COMMAND_PARAM;
+	params.s = INVALID_COMMAND_PARAM;
 }
 
-int32_t Command::find_instruction_end_char(char* instruction) {
-	int32_t pos = 0;
-    while (instruction[pos] != '\0') {
-    	if (instruction[pos] == '\n' || instruction[pos] == ';') {
-            return pos;
-        }
-        pos++;
+int32_t Command::find_instruction_end_char(char* full_instruction_line) {
+    char command_end_chars[] = {';', '\n', '\0'};
+    char* result = strpbrk(full_instruction_line, command_end_chars);
+    if (result != nullptr) {
+        return result - full_instruction_line - 1;
+    } else {
+        return -1;
     }
-    return -1;
 }
 
 bool Command::is_instruction_comment(char* instruction) {

@@ -41,6 +41,7 @@ public:
 	const float get_one_step_displacement();
 	const bool is_position_changed(float new_pos);
 	void update_position(float new_pos);
+	virtual void set_home_position();
 };
 
 #endif /* SRC_AXIS_H_ */

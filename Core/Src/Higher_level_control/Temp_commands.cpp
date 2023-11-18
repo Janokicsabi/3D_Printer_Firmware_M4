@@ -60,8 +60,8 @@ void execute_M190(Command_struct* command) {
 
 //TODO Azt is meg lehetne csinálni, hogy a Task-ot suspendeli, illetve folytatja
 void start_temperature_control(Temp_controller* heater, Command_struct* command) {
-	if (command->s.is_param_valid) {
-		float goal_temp = command->s.param_value;
+	if (command->s != INVALID_COMMAND_PARAM) {
+		float goal_temp = command->s;
 		heater->reset_controller_variables();
 		heater->set_goal_temp(goal_temp);
 		heater->heater_timer_start();
