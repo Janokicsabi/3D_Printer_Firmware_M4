@@ -169,6 +169,10 @@ void task_hotend_control(void* param) {
 		uint16_t current_temp_adc = get_last_hotend_temp_adc();
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
+		//TODO Majd eltávolítani
+		global_temp_celsius = current_temp_celsius;
+		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
+
 		if (current_temp_celsius > MAX_GOAL_TEMP) {
 			hotend_controller->heater_timer_stop();
 			while (current_temp_celsius > MAX_GOAL_TEMP) {
@@ -179,6 +183,8 @@ void task_hotend_control(void* param) {
 
 		hotend_controller->set_current_temp_celius(current_temp_celsius);
 		float new_duty_cycle = hotend_controller->compute_PI_controller();
+		//TODO majd eltávlít
+		global_duty = new_duty_cycle;
 		hotend_controller->set_duty_cycle(new_duty_cycle);
 		vTaskDelay(100);
 	}

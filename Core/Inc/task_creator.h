@@ -23,7 +23,7 @@
 
 #define NUM_OF_AXES				4		//X+Y+Z+E
 
-#define MESSAGE_QUEUE_SIZE		20
+#define MESSAGE_QUEUE_SIZE		50
 
 #define READY_FOR_NEXT_COMMAND		(1 << 0)
 

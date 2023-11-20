@@ -41,6 +41,7 @@ private:
 	int32_t find_instruction_end_char(char* instruction);
 	int32_t find_param_start_char(char* full_instruction_line);
 	uint32_t find_command_code_end_char(char* full_instruction_line);
+	bool is_instruction_executable(char* full_instruction_line);
 
 public:
 	Command();

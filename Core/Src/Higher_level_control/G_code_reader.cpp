@@ -31,10 +31,10 @@ void task_fill_message_queue(void* sd_card) {
 				command.extract_params_from_command_string();
 				Command_struct* current_params = command.get_params();
 				while(xQueueSend(queue_command, (void*)current_params, 0) != pdPASS) {
-					vTaskDelay(10000);
+					vTaskDelay(1000);
 				}
 			}
 		}
-		vTaskDelay(100);
+		vTaskDelay(50);
 	}
 }

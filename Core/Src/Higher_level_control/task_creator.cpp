@@ -89,7 +89,7 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	sd_card->open_file("test");
+	sd_card->open_file("test3");
 
 	//Init
 

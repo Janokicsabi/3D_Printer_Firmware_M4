@@ -20,7 +20,7 @@ Command::~Command() {
 }
 
 bool Command::set_code_and_param_string(char* full_instruction_line) {
-	if (is_instruction_comment(full_instruction_line) || is_instruction_empty(full_instruction_line)) {
+	if (!is_instruction_executable(full_instruction_line)) {
 		return false;
 	}
 
@@ -90,6 +90,13 @@ int32_t Command::find_instruction_end_char(char* full_instruction_line) {
 
 bool Command::is_instruction_comment(char* instruction) {
 	if(instruction[0] == ';') {
+		return true;
+	}
+	return false;
+}
+
+bool Command::is_instruction_executable(char* instruction) {
+	if (instruction[0] == 'G' || instruction[0] == 'M') {
 		return true;
 	}
 	return false;

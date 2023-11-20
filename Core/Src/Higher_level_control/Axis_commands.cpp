@@ -134,7 +134,40 @@ void execute_axis_move_command(Command_struct* command) {
 	float max_acc_time = get_max_accel_time(axes, travel_distances);
 	adjust_accel_to_time(axes, accel, travel_distances, max_acc_time);
 	reset_motor_linear_acc_params(step_num_required, accel, max_acc_time, travel_directions);
+	if (step_num_required[1] == 1) {
+		HAL_TIM_Base_Start_IT(motor_timer);
+	}
 	HAL_TIM_Base_Start_IT(motor_timer);
+
+	/*Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
+	float axis_params[] = {command->x, command->y, command->z, command->e};
+
+	float travel_distances[NUM_OF_AXES] = {0.0f};
+	uint8_t travel_directions[NUM_OF_AXES] = {0};
+	float accel[NUM_OF_AXES] = {0.0f};
+	uint32_t step_num_required[NUM_OF_AXES] = {0};
+	float acc_dist[NUM_OF_AXES] = {0.0f};
+	float acc_time[NUM_OF_AXES] = {0.0f};
+
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (axis_params[i] != INVALID_COMMAND_PARAM) {
+			travel_directions[i] = axes[i]->calculate_dir(axis_params[i]);
+			axes[i]->get_motor()->change_stepper_dir_pin(travel_directions[i]);
+			travel_distances[i] = abs(axis_params[i] - axes[i]->get_axis_pos());
+			step_num_required[i] = axes[i]->calculate_step_num(axis_params[i]);
+			axes[i]->update_position(axis_params[i]);
+		}
+	}
+
+	if (command->f != INVALID_COMMAND_PARAM) current_feedrate = command->f;
+
+	float max_acc_to_full_dist_ratio;
+	float v_max_reached[NUM_OF_AXES];
+	float max_acc_time = get_max_time_trapezoid(axes, acc_dist, travel_distances, acc_time, &max_acc_to_full_dist_ratio);
+	adjust_accel_to_time_trapezoid(axes, accel, acc_dist, travel_distances, max_acc_time, v_max_reached, max_acc_to_full_dist_ratio);
+
+	reset_motor_trapezoid_params(step_num_required, accel, acc_dist, travel_distances, travel_directions, v_max_reached);
+	HAL_TIM_Base_Start_IT(motor_timer);*/
 }
 
 float get_max_accel_time(Axis* axes[], float* travel_distances) {
@@ -148,9 +181,41 @@ float get_max_accel_time(Axis* axes[], float* travel_distances) {
 	return max_accel_time;
 }
 
+float get_max_time_trapezoid(Axis* axes[], float* acc_dist, float* full_dist, float* acc_time, float* max_acc_to_full_dist_ratio) {
+	float max_full_time = 0.0f;
+	float max_acc_time = 0.0f;
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		float used_speed_mm_s = current_feedrate / 60.0f;
+		if (axes[i]->get_max_speed() < current_feedrate) {
+			used_speed_mm_s = axes[i]->get_max_speed() / 60.0;
+		}
+		acc_dist[i] = (used_speed_mm_s * used_speed_mm_s) / (2.0f * axes[i]->get_max_accel());
+		if (2.0f * acc_dist[i] > full_dist[i]) {
+			acc_dist[i] = full_dist[i] / 2.0f;
+		}
+		acc_time[i] = used_speed_mm_s / axes[i]->get_max_speed();
+		float const_time = (full_dist[i] - 2 * acc_dist[i]) / used_speed_mm_s;
+		float full_time = 2.0f * acc_time[i] + const_time;
+		if (full_time > max_full_time) {
+			max_full_time = full_time;
+			max_acc_time = acc_time[i];
+			*max_acc_to_full_dist_ratio = acc_dist[i] / full_dist[i];
+		}
+	}
+	return max_acc_time;
+}
+
 void adjust_accel_to_time(Axis* axes[], float* accel, float* travel_distances, float accel_time) {
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		accel[i] = axes[i]->acceleration_for_time_and_distance(accel_time, travel_distances[i]);
+	}
+}
+
+void adjust_accel_to_time_trapezoid(Axis* axes[], float* accel, float* acc_dist, float* travel_distances, float accel_time, float* v_max_reached, float max_acc_to_full_dist_ratio) {
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		acc_dist[i] = max_acc_to_full_dist_ratio * travel_distances[i];
+		accel[i] = (2.0f * acc_dist[i]) / (accel_time * accel_time);
+		v_max_reached[i] = accel[i] * accel_time;
 	}
 }
 

@@ -29,4 +29,7 @@ void execute_axis_move_command(Command_struct* new_axis_params);
 float get_max_accel_time(Axis* axes[], float* travel_distances);
 void adjust_accel_to_time(Axis* axes[], float* accel, float* travel_distances, float accel_time);
 
+float get_max_time_trapezoid(Axis* axes[], float* acc_dist, float* full_dist, float* acc_time, float* max_acc_to_full_dist_ratio);
+void adjust_accel_to_time_trapezoid(Axis* axes[], float* accel, float* acc_dist, float* travel_distances, float accel_time, float* v_max_reached, float max_acc_to_full_dist_ratio);
+
 #endif /* SRC_AXISCOMMANDS_H_ */

@@ -38,6 +38,8 @@ Command_executor supported_commands[] = {
 void init_command_control() {
 }
 
+uint32_t num_of_free_spaces = 0;
+
 void task_command_control(void* param) {
 	//TODO Remélhetőleg nem dominálja le teljesen a többi taskot, erre figyelni!
 	while(1) {
@@ -45,6 +47,7 @@ void task_command_control(void* param) {
 		if((command_status & READY_FOR_NEXT_COMMAND) != 0) {
 			Command_struct received_command;
 			int32_t command_index = get_last_command_from_queue(&received_command);
+			num_of_free_spaces = uxQueueSpacesAvailable(queue_command);
 			if (command_index != -1) {
 				xEventGroupClearBits(command_state, READY_FOR_NEXT_COMMAND);
    				supported_commands[command_index].Command_executor(&received_command);

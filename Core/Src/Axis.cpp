@@ -51,6 +51,14 @@ const float Axis::get_one_step_displacement() {
 	return this->displacement_per_microstep;
 }
 
+float Axis::get_max_accel() {
+	return this->max_acc;
+}
+
+float Axis::get_max_speed() {
+	return this->max_speed;
+}
+
 void Axis::control_axis_pwm(float move_speed, float new_pos, bool is_feedrate_const) {
 	//The position is the same, so no motor movement required
 	if (!this->is_position_changed(new_pos)) {

@@ -85,18 +85,18 @@ void motor_timer_callback(TIM_HandleTypeDef *htim) {
 void cpp_wrap_heater_pwm_callback(TIM_HandleTypeDef *htim) {
 	heater_pwm_callback(htim);
 }
-
+//TODO VISSZAÁLLÍT!!!
 void heater_pwm_callback(TIM_HandleTypeDef *htim) {
-	if (htim == hotend_timer) {
+	/*if (htim == hotend_timer) {
 		hotend_heater->heater_pin_off();
 	}
 	if (htim == bed_timer) {
 		bed_heater->heater_pin_off();
-	}
+	}*/
 }
 
 void cpp_wrap_heater_timer_callback(TIM_HandleTypeDef *htim) {
-	heater_timer_callback(htim);
+	//heater_timer_callback(htim);
 }
 
 void heater_timer_callback(TIM_HandleTypeDef *htim) {
@@ -147,6 +147,7 @@ Motor_move_type motor_move_type;
 void callback_motor(TIM_HandleTypeDef* htim) {
 	if (motor_move_type == LINEAR) {
 		callback_motor_linear_acc(htim);
+		//callback_motor_trapezoid_acc(htim);
 	} else if (motor_move_type == HOME) {
 		callback_motors_home(htim);
 	}
@@ -204,9 +205,9 @@ void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 	}
 	xSemaphoreGiveFromISR(sem_is_moving, &pxHigherPriorityTaskWoken);
 
-	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+ 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		if (required_steps[i] > 0 && is_moving_local[i] != 0) {
-			if (steps_done[i] < required_steps[i] >> 1) {
+			if (steps_done[i] < required_steps[i] >> 1 || steps_done[i] == 0) {
 				s[i] = (acc[i] / 2.0f) * ellapsed_time_squared;
 			} else {
 				s[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0f) * ellapsed_time_squared;
@@ -258,6 +259,124 @@ void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 	}
 }
 
+/*//////////////////////////////////////////////////////////////////////////////////////////////////////////
+float full_distance[NUM_OF_AXES];
+uint32_t acc_steps_end[NUM_OF_AXES];
+uint32_t const_steps_end[NUM_OF_AXES];
+
+void reset_motor_trapezoid_params(uint32_t* step_num, float* accel, float* acc_dist, float* full_dist, uint8_t* move_dir, float* v_max) {
+	motor_move_type = LINEAR;
+	tick_num = 0;
+	are_steps_done = 0;	//false
+	ellapsed_time = 0;
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		xSemaphoreTake(sem_is_moving, 1);
+		if (step_num[i] > 0) {
+			if (i > NUM_OF_DESCARTES_AXES) {
+				is_moving[i] = 1;
+			} else if (((Descartes_Axis*)callback_axes[i])->can_motor_move(move_dir[i])) {
+				is_moving[i] = 1;
+			} else {
+				is_moving[i] = 0;
+			}
+		}
+		else {
+			is_moving[i] = 0;
+		}
+		xSemaphoreGive(sem_is_moving);
+
+		full_distance[i] = full_dist[i];
+		acc_distance[i] = acc_dist[i];
+
+		acc_steps_end[i] = (uint32_t)(acc_dist[i] / displacement_per_microstep[i]);
+		const_steps_end[i] = (uint32_t)((full_dist[i] - acc_dist[i]) / displacement_per_microstep[i]);
+		v_max_reached[i] = v_max[i];
+
+		steps_done[i] = 0;
+		required_steps[i] = step_num[i];
+		s[i] = 0;
+		is_step_pin_active[i] = false;
+		acc[i] = accel[i];
+		v_max_reached[i] = acc[i] * accel_time;
+		HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
+	}
+}
+
+void callback_motor_trapezoid_acc(TIM_HandleTypeDef *htim) {
+	uint32_t end_time;
+	tick_num++;
+	uint32_t start_time = TIM16->CNT;
+
+	ellapsed_time += time_delay;
+	float ellapsed_time_squared = ellapsed_time * ellapsed_time;
+
+	uint8_t is_moving_local[NUM_OF_AXES];
+	BaseType_t pxHigherPriorityTaskWoken;
+	xSemaphoreTakeFromISR(sem_is_moving, &pxHigherPriorityTaskWoken);
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		is_moving_local[i] = is_moving[i];
+	}
+	xSemaphoreGiveFromISR(sem_is_moving, &pxHigherPriorityTaskWoken);
+
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (required_steps[i] > 0 && is_moving_local[i] != 0) {
+			if (s[i] < acc_distance[i]) {
+				s[i] = (acc[i] / 2.0f) * ellapsed_time_squared;
+			} else if (s[i] < full_distance[i] - acc_distance[i]) {
+				s[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time;
+			} else {
+				s[i] = full_distance[i] - acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0f) * ellapsed_time_squared;
+			}
+
+			if (is_step_pin_active[i]) {
+				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
+				is_step_pin_active[i] = 0;
+			}
+
+			if (uint32_t(s[i] / displacement_per_microstep[i]) - steps_done[i] != 0) {
+				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_SET);
+				steps_done[i]++;
+				is_step_pin_active[i] = 1;
+
+				if (steps_done[i] == acc_steps_end[i]) {
+					ellapsed_time = 0;
+				} else if (steps_done[i] == const_steps_end[i]) {
+					ellapsed_time = 0;
+				}
+
+				if (steps_done[i] == required_steps[i]) {
+					required_steps[i] = 0;
+				}
+			}
+		}
+	}
+
+	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
+		if (required_steps[i] != 0) {
+			end_time = TIM16->CNT;
+			asd += (end_time - start_time);
+			if (worst_time < end_time - start_time) {
+				worst_time = end_time - start_time;
+			}
+			return;
+		}
+	}
+
+	end_time = TIM16->CNT;
+	asd += (end_time - start_time);
+	if (worst_time < end_time - start_time) {
+		worst_time = end_time - start_time;
+	}
+	HAL_TIM_Base_Stop_IT(htim);
+
+	BaseType_t xHigherPriorityTaskWoken, xResult;
+	xHigherPriorityTaskWoken = pdFALSE;
+	xResult = xEventGroupSetBitsFromISR(command_state, READY_FOR_NEXT_COMMAND, &xHigherPriorityTaskWoken );
+	if( xResult != pdFAIL ) {
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
 float home_acc;
 float home_max_speed;
