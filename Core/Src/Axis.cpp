@@ -9,11 +9,12 @@
 #include <cmath>
 
 
-Axis::Axis(Stepper* motor, const float full_rotation_displacement, float max_acc, float max_speed) {
+Axis::Axis(Stepper* motor, const float full_rotation_displacement, float max_acc, float max_speed, float max_jerk) {
 	this->motor = motor;
 	this->pos_in_ws_frame = 0.0f;
 	this->max_acc = max_acc;
 	this->max_speed = max_speed;
+	this->max_jerk = max_jerk;
 
 	float full_step_degrees = motor->get_full_step_degree();
 	float microstep_devider = motor->get_microstep_devider();
@@ -59,6 +60,10 @@ float Axis::get_max_speed() {
 	return this->max_speed;
 }
 
+float Axis::get_max_jerk() {
+	return this->max_jerk;
+}
+
 void Axis::control_axis_pwm(float move_speed, float new_pos, bool is_feedrate_const) {
 	//The position is the same, so no motor movement required
 	if (!this->is_position_changed(new_pos)) {
@@ -101,10 +106,11 @@ float Axis::time_to_reach_speed_max_accel(float desired_speed_mm_p_min, float di
 		desired_speed_mm_p_min = max_speed;
 	}
 	float desired_speed = convert_feedrate_to_mm_p_s(desired_speed_mm_p_min);
+	float a_used = max_acc;
 	float acc_time = sqrt(distance_to_move / max_acc);
-	float time_to_reach_desired_speed = desired_speed / max_acc;
-	if (time_to_reach_desired_speed < acc_time) {
-		float a_used = pow(desired_speed, 2) / distance_to_move;
+	float max_reached_speed = max_acc * acc_time;
+	if (max_reached_speed > desired_speed) {
+		a_used = (desired_speed * desired_speed) / distance_to_move;
 		acc_time = sqrt(distance_to_move / a_used);
 	}
 	return acc_time;

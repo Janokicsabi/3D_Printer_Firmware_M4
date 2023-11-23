@@ -30,8 +30,9 @@ private:
 	uint8_t move_dir;
 	float full_step_degree;
 	uint32_t microstep_devider;
+	uint8_t positive_dir;
 
-	const uint32_t calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement);
+	const uint32_t calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement, uint8_t positive_dir);
 	void set_motor_timer_period(uint32_t timer_period);
 
 	void start_motor_timer();
@@ -39,7 +40,7 @@ private:
 public:
 
 	Stepper(GPIO_TypeDef* step_port, uint16_t step_pin, GPIO_TypeDef* dir_port, uint16_t dir_pin,
-			float full_step_degree, uint32_t microstep_devider);
+			float full_step_degree, uint32_t microstep_devider, uint8_t positive_dir);
 	Stepper();
 	virtual ~Stepper();
 	static void enable_steppers();

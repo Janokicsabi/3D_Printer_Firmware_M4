@@ -26,6 +26,9 @@
 #define MESSAGE_QUEUE_SIZE		50
 
 #define READY_FOR_NEXT_COMMAND		(1 << 0)
+#define ALL_COMMANDS_EXECUTED		(1 << 1)
+
+#define COMMAND_READ_FINISHED		(1 << 0)
 
 #define MOTOR_X_FINISHED	(1 << 0)
 #define MOTOR_Y_FINISHED	(1 << 1)

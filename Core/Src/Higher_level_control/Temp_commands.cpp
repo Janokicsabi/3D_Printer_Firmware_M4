@@ -8,6 +8,7 @@
 #include "Temp_commands.h"
 #include "thermistor.h"
 #include "task_creator.h"
+#include "Fan.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -17,16 +18,19 @@
 extern EventGroupHandle_t command_state;
 static Temp_controller* hotend_heater;
 static Temp_controller* bed_heater;
+static Fan* hotend_fan;
 
 
-void temp_commands_init(Temp_controller* hotend, Temp_controller* bed) {
+void temp_commands_init(Temp_controller* hotend, Temp_controller* bed, Fan* fan) {
 	hotend_heater = hotend;
 	bed_heater = bed;
+	hotend_fan = fan;
 }
 
 void execute_M104(Command_struct* command) {
 	//Start the hotend heating process
 	//Doesn't wait for the goal temperature to be reached
+	hotend_fan->turn_on_fan();
 	xTaskCreate(task_temp_read, "TEMP_READ", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 	xTaskCreate(task_hotend_control, "HOTEND_TEMP_CONTROL", TASK_MID_STACK_SIZE, (void*)hotend_heater, TASK_MID_PRIO, NULL);
 	start_temperature_control(hotend_heater, command);
@@ -36,6 +40,9 @@ void execute_M104(Command_struct* command) {
 void execute_M109(Command_struct* command) {
 	//Start the hotend heating process
 	//Waits for the goal temperature to be reached
+	hotend_fan->turn_on_fan();
+	xTaskCreate(task_temp_read, "TEMP_READ", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_hotend_control, "HOTEND_TEMP_CONTROL", TASK_MID_STACK_SIZE, (void*)hotend_heater, TASK_MID_PRIO, NULL);
 	start_temperature_control(hotend_heater, command);
 	xTaskCreate(task_wait_for_temp_to_reach, "TEMP_REACH_HOTEND", TASK_SMALL_STACK_SIZE, (void*)hotend_heater, TASK_LOW_PRIO, NULL);
 }

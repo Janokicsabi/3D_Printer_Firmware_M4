@@ -19,7 +19,7 @@ private:
 
 public:
 	Descartes_Axis(Stepper* motor, Limit_switch* limit_switch, const float workspace_frame_offset, const float axis_length,
-			const float full_rotation_displacement, const uint8_t limit_switch_dir, float max_acc, float max_speed);
+			const float full_rotation_displacement, const uint8_t limit_switch_dir, float max_acc, float max_speed, float max_jerk);
 	virtual ~Descartes_Axis();
 
 	void set_home_position();

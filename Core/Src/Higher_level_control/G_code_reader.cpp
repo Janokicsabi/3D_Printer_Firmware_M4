@@ -12,6 +12,7 @@
 
 #define MAX_COMMAND_LENGTH		(MAX_COMMAND_SIZE + MAX_PARAM_SIZE)
 extern xQueueHandle queue_command;
+extern EventGroupHandle_t event_command_read_ready;
 
 static char full_command_line[MAX_COMMAND_LENGTH];
 
@@ -19,8 +20,7 @@ static char full_command_line[MAX_COMMAND_LENGTH];
 void task_fill_message_queue(void* sd_card) {
 	while(1) {
 		if (f_eof(((SD_card*)sd_card)->get_file()) != 0) {
-			//TODO Ide esetleg valami flag, hogy jelezze, vége az egésznek.
-			//Fontos, hogy ezután még le kell futniuk a queue-ba helyezett üzeneteknek!
+			xEventGroupSetBits(event_command_read_ready, COMMAND_READ_FINISHED);
 			vTaskDelete(NULL);
 		}
 

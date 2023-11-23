@@ -12,7 +12,7 @@
 
 
 Stepper::Stepper(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_TypeDef* dir_port = NULL, uint16_t dir_pin = 0,
-		float full_step_degree = 1.8, uint32_t microstep_devider = 1) {
+		float full_step_degree = 1.8, uint32_t microstep_devider = 1, uint8_t positive_dir = 0) {
 	this->step_port = step_port;
 	this->step_pin = step_pin;
 	this->dir_port = dir_port;
@@ -20,7 +20,8 @@ Stepper::Stepper(GPIO_TypeDef* step_port = NULL, uint16_t step_pin = 0, GPIO_Typ
 	this->remaining_steps = 0;
 	this->full_step_degree = full_step_degree;
 	this->microstep_devider = microstep_devider;
-	this->change_stepper_dir_pin(0);
+	this->positive_dir = positive_dir;
+	this->change_stepper_dir_pin(positive_dir);
 }
 
 Stepper::Stepper() {
@@ -42,11 +43,10 @@ void Stepper::set_goal_speed(float move_speed, float one_step_displacement) {
 
 void Stepper::change_stepper_dir_pin(uint8_t new_dir) {
 	this->move_dir = new_dir;
-	if (new_dir == 0) {
-		HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET);
-	} else {
-		HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_SET);
-	}
+	if (new_dir == 0 && positive_dir == 0) HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET);
+	else if (new_dir == 1 && positive_dir == 0) HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_SET);
+	else if (new_dir == 0 && positive_dir == 1) HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_SET);
+	else if (new_dir == 1 && positive_dir == 1) HAL_GPIO_WritePin(dir_port, dir_pin, GPIO_PIN_RESET);
 }
 
 const uint32_t Stepper::get_microstep_devider() {

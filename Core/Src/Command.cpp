@@ -82,7 +82,7 @@ int32_t Command::find_instruction_end_char(char* full_instruction_line) {
     char command_end_chars[] = {';', '\n', '\0'};
     char* result = strpbrk(full_instruction_line, command_end_chars);
     if (result != nullptr) {
-        return result - full_instruction_line - 1;
+        return result - full_instruction_line;
     } else {
         return -1;
     }

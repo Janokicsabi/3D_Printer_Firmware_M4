@@ -45,8 +45,15 @@ extern TIM_HandleTypeDef htim8;
 extern TIM_HandleTypeDef htim16;
 
 //Hardware
-SD_card* sd_card;
-Axis* axes_array[NUM_OF_AXES];
+static SD_card* sd_card;
+static Axis* axes_array[NUM_OF_AXES];
+
+Temp_controller* hotend_heater;
+Temp_controller* bed_heater;
+
+Fan* fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
+Fan* fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin, &htim3, TIM_CHANNEL_1);
+
 
 //Semaphores
 SemaphoreHandle_t temp_adc_sem;
@@ -55,8 +62,7 @@ SemaphoreHandle_t goal_temp_sem;
 
 //Event flags
 EventGroupHandle_t command_state;
-//TODO REMOVE, TEST ONLY
-EventGroupHandle_t event_test;
+EventGroupHandle_t event_command_read_ready;
 
 //Queues
 xQueueHandle queue_command;
@@ -84,6 +90,7 @@ void task_creator(void* param) {
 	//Flags
 	command_state = xEventGroupCreate();
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
+	event_command_read_ready = xEventGroupCreate();
 
 	//Queues
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
@@ -93,38 +100,41 @@ void task_creator(void* param) {
 
 	//Init
 
-	Fan* fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
-	Fan* fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin);
+	fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
+	fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin, &htim3, TIM_CHANNEL_1);
 	fan_commands_init(fan_hotend, fan_part_cooling);
 
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
-	Stepper* stepper_X = new Stepper(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, 1.8, 8);
-	Stepper* stepper_Y = new Stepper(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, 1.8, 8);
-	Stepper* stepper_Z = new Stepper(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, 1.8, 8);
-	Stepper* stepper_E = new Stepper(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, 1.8, 16);
+	Stepper* stepper_X = new Stepper(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, 1.8, 8, 0);
+	Stepper* stepper_Y = new Stepper(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, 1.8, 8, 0);
+	Stepper* stepper_Z = new Stepper(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, 1.8, 8, 0);
+	Stepper* stepper_E = new Stepper(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, 1.8, 16, 0);
 
 	Limit_switch* limit_X = new Limit_switch(LIMIT_X_GPIO_Port, LIMIT_X_Pin, stepper_X);
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, stepper_Y);
 	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, stepper_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 5.0, 280.0, 40, 0, 2000, 7800);
-	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 5.0, 240.0, 40, 0, 200, 2000);
-	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 500, 3000);
-	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200);
+	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 5.0, 280.0, 40, 0, 50, 7800, 0);
+	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 5.0, 240.0, 40, 0, 10, 2000, 0);
+	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 30, 3000, 0);
+	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200, 0);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);
 
-	//TEMP_CONTROL
-	Temp_controller* hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
-	Temp_controller* bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
-	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater);
+	//TEMP_CONTROL TODO visszaírni a tolerance-t
+	hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
+	bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
+	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater, (void*)fan_part_cooling);
 	init_thermistor(&hadc1, &hadc2);
-	temp_commands_init(hotend_heater, bed_heater);
+	temp_commands_init(hotend_heater, bed_heater, fan_hotend);
 
 	//TEST GCode reader & RTOS queue
 	xTaskCreate(task_fill_message_queue, "G_CODE_READER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
 	xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
+	//Filamnet test
+	//fan_hotend->turn_on_fan();
+	//filament_test(NULL);
 
 	//TEST FAN
 	/*char read_instruction[30] = "M106 S229.5\n";
