@@ -22,6 +22,7 @@
 #define TASK_SMALL_STACK_SIZE	128
 
 #define NUM_OF_AXES				4		//X+Y+Z+E
+#define NUM_OF_DESCARTES_AXES	3		//X+Y+Z
 
 #define MESSAGE_QUEUE_SIZE		50
 

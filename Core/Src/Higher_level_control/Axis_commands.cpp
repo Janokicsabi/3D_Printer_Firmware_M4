@@ -63,15 +63,19 @@ void execute_G21(Command_struct* command) {
 }
 
 void execute_G28(Command_struct* command) {
-	//Home all axis
-	//TODO EZT MEGCSINÁLNI
-	reset_motors_home_params();
-	axis_X->get_motor()->change_stepper_dir_pin(axis_X->get_limit_switch_dir());
-	axis_X->set_home_position();
-	axis_Y->get_motor()->change_stepper_dir_pin(axis_Y->get_limit_switch_dir());
-	axis_Y->set_home_position();
-	axis_Z->get_motor()->change_stepper_dir_pin(axis_Z->get_limit_switch_dir());
-	axis_Z->set_home_position();
+	//Home axes
+	uint8_t is_going_home[NUM_OF_DESCARTES_AXES] = {0};
+	if (command->x == INVALID_COMMAND_PARAM && command->y == INVALID_COMMAND_PARAM && command->z == INVALID_COMMAND_PARAM) {
+		home_axis(axis_X, is_going_home, 0);
+		home_axis(axis_Y, is_going_home, 1);
+		home_axis(axis_Z, is_going_home, 2);
+	}
+	else {
+		if (command->x != INVALID_COMMAND_PARAM) home_axis(axis_X, is_going_home, 0);
+		if (command->y != INVALID_COMMAND_PARAM) home_axis(axis_Y, is_going_home, 1);
+		if (command->z != INVALID_COMMAND_PARAM) home_axis(axis_Z, is_going_home, 2);
+	}
+	reset_motors_home_params(is_going_home);
 	HAL_TIM_Base_Start_IT(motor_timer);
 }
 
@@ -133,40 +137,14 @@ void execute_axis_move_command(Command_struct* command) {
 
 	float max_acc_time = get_max_accel_time(axes, travel_distances);
 	adjust_accel_to_time(axes, accel, travel_distances, max_acc_time);
-	reset_motor_linear_acc_params(step_num_required, accel, max_acc_time, travel_directions);
+	reset_motor_linear_acc_params(step_num_required, accel, travel_directions);
 	HAL_TIM_Base_Start_IT(motor_timer);
+}
 
-	/*Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
-	float axis_params[] = {command->x, command->y, command->z, command->e};
-
-	float travel_distances[NUM_OF_AXES] = {0.0f};
-	uint8_t travel_directions[NUM_OF_AXES] = {0};
-	float accel[NUM_OF_AXES] = {0.0f};
-	uint32_t step_num_required[NUM_OF_AXES] = {0};
-	float acc_dist[NUM_OF_AXES] = {0.0f};
-	float acc_time[NUM_OF_AXES] = {0.0f};
-	float const_time[NUM_OF_AXES] = {0.0f};
-	float max_acc_to_full_dist_ratio;
-	float max_const_time;
-	float used_v0[NUM_OF_AXES];
-
-	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
-		if (axis_params[i] != INVALID_COMMAND_PARAM) {
-			travel_directions[i] = axes[i]->calculate_dir(axis_params[i]);
-			axes[i]->get_motor()->change_stepper_dir_pin(travel_directions[i]);
-			travel_distances[i] = abs(axis_params[i] - axes[i]->get_axis_pos());
-			step_num_required[i] = axes[i]->calculate_step_num(axis_params[i]);
-			axes[i]->update_position(axis_params[i]);
-		}
-	}
-
-	if (command->f != INVALID_COMMAND_PARAM) current_feedrate = command->f;
-
-	float max_acc_time = get_max_time_trapezoid(axes, acc_dist, travel_distances, &max_acc_to_full_dist_ratio, &max_const_time);
-	adjust_accel_to_time_trapezoid(axes, accel, acc_dist, travel_distances, max_acc_time, used_v0, max_acc_to_full_dist_ratio);
-	//reset_motor_trapezoid_params(uint32_t* step_num, float* accel, float acc_time, float const_time, float* full_dist, uint8_t* move_dir, float* start_speed)
-	reset_motor_trapezoid_params(step_num_required, accel, max_acc_time, max_const_time, travel_distances, travel_directions, used_v0);
-	HAL_TIM_Base_Start_IT(motor_timer);*/
+void home_axis(Axis* axis, uint8_t* is_going_home, uint32_t idx) {
+    ((Descartes_Axis*)axis)->get_motor()->change_stepper_dir_pin(((Descartes_Axis*)axis)->get_limit_switch_dir());
+    axis->set_home_position();
+    is_going_home[idx] = 1;
 }
 
 float get_max_accel_time(Axis* axes[], float* travel_distances) {

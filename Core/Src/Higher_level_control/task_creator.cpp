@@ -96,7 +96,8 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	sd_card->open_file("test3");
+	sd_card->open_file("3DBenchy");
+	//sd_card->open_file("3DBenchy");
 
 	//Init
 
@@ -106,7 +107,7 @@ void task_creator(void* param) {
 
 	//TODO ELLENŐIZNI A PARAMÉTEREKET!!!
 	Stepper* stepper_X = new Stepper(STEP_X_GPIO_Port, STEP_X_Pin, DIR_X_GPIO_Port, DIR_X_Pin, 1.8, 8, 0);
-	Stepper* stepper_Y = new Stepper(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, 1.8, 8, 0);
+	Stepper* stepper_Y = new Stepper(STEP_Y_GPIO_Port, STEP_Y_Pin, DIR_Y_GPIO_Port, DIR_Y_Pin, 1.8, 8, 1);
 	Stepper* stepper_Z = new Stepper(STEP_Z_GPIO_Port, STEP_Z_Pin, DIR_Z_GPIO_Port, DIR_Z_Pin, 1.8, 8, 0);
 	Stepper* stepper_E = new Stepper(STEP_E_GPIO_Port, STEP_E_Pin, DIR_E_GPIO_Port, DIR_E_Pin, 1.8, 16, 0);
 
@@ -114,9 +115,9 @@ void task_creator(void* param) {
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, stepper_Y);
 	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, stepper_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 5.0, 280.0, 40, 0, 50, 7800, 0);
-	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 5.0, 240.0, 40, 0, 10, 2000, 0);
-	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 180.0, 8, 0, 30, 3000, 0);
+	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 0.0, 200.0, 40, 0, LIMIT_SWITCH_NULL_POS, 1000, 7800, 0);
+	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 0.0, 180.0, 40, 1, LIMIT_SWITCH_END_POS, 200, 2400, 0);
+	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 165.0, 8, 0, LIMIT_SWITCH_NULL_POS, 500, 1200, 0);
 	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200, 0);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);

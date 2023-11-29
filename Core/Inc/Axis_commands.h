@@ -26,6 +26,7 @@ void execute_M82(Command_struct* command);
 void execute_M84(Command_struct* command);
 int32_t get_command_index(char* code);
 void execute_axis_move_command(Command_struct* new_axis_params);
+void home_axis(Axis* axis, uint8_t* is_going_home, uint32_t idx);
 float get_max_accel_time(Axis* axes[], float* travel_distances);
 void adjust_accel_to_time(Axis* axes[], float* accel, float* travel_distances, float accel_time);
 

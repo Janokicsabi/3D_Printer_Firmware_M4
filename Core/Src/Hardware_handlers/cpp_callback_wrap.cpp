@@ -16,8 +16,6 @@
 #include "Temp_controller.h"
 #include "Fan.h"
 
-#define NUM_OF_DESCARTES_AXES	3
-
 static Axis* callback_axes[NUM_OF_AXES];
 static Stepper* callback_motors[NUM_OF_AXES];
 static Limit_switch* callback_limit_switches[NUM_OF_AXES];
@@ -163,13 +161,14 @@ float s[NUM_OF_AXES];													//Legyen nullázva mindig az elején
 uint8_t is_step_pin_active[NUM_OF_AXES];								//Legyen false mindig az elején
 float acc[NUM_OF_AXES];
 uint8_t are_steps_done;
-float accel_time;
+float accel_time[NUM_OF_AXES];
 float v_max_reached[NUM_OF_AXES];
 float acc_distance[NUM_OF_AXES];
-float ellapsed_time;
 Motor_move_type motor_move_type;
 float total_ellapsed_time;
 uint32_t section_counter;
+float v[NUM_OF_AXES];
+uint8_t move_phase[NUM_OF_AXES];
 
 
 void callback_motor(TIM_HandleTypeDef* htim) {
@@ -181,12 +180,10 @@ void callback_motor(TIM_HandleTypeDef* htim) {
 	}
 }
 
-void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, float acc_time, uint8_t* move_dir) {
+void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, uint8_t* move_dir) {
 	motor_move_type = LINEAR;
 	tick_num = 0;
 	are_steps_done = 0;	//false
-	ellapsed_time = 0;
-	accel_time = acc_time;
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		xSemaphoreTake(sem_is_moving, 1);
 		if (step_num[i] > 0) {
@@ -203,15 +200,17 @@ void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, float acc_t
 		}
 		xSemaphoreGive(sem_is_moving);
 
+		accel_time[i] = 0;
 		steps_done[i] = 0;
 		required_steps[i] = step_num[i];
 		s[i] = 0;
 		is_step_pin_active[i] = false;
 		acc[i] = accel[i];
-		v_max_reached[i] = acc[i] * accel_time;
 		acc_distance[i] = (required_steps[i] * displacement_per_microstep[i]) / 2.0;
 		total_ellapsed_time = 0.0f;
 		section_counter = 0;
+		v[i] = 0.0f;
+		move_phase[i] = 0;
 		HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_RESET);
 	}
 }
@@ -224,9 +223,7 @@ void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 	tick_num++;
 	uint32_t start_time = TIM16->CNT;
 
-	ellapsed_time += time_delay;
 	total_ellapsed_time += time_delay;
-	float ellapsed_time_squared = ellapsed_time * ellapsed_time;
 
 	uint8_t is_moving_local[NUM_OF_AXES];
 	BaseType_t pxHigherPriorityTaskWoken;
@@ -273,10 +270,11 @@ void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 
  	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		if (required_steps[i] > 0 && is_moving_local[i] != 0) {
-			if (steps_done[i] < required_steps[i] >> 1 || steps_done[i] == 0) {
-				s[i] = (acc[i] / 2.0f) * ellapsed_time_squared;
+			if (move_phase[i] == 0) {
+				s[i] = (acc[i] / 2.0f) * total_ellapsed_time * total_ellapsed_time;
 			} else {
-				s[i] = acc_distance[i] + v_max_reached[i] * ellapsed_time - (acc[i] / 2.0f) * ellapsed_time_squared;
+				float time_since_new_phase = total_ellapsed_time - accel_time[i];
+				s[i] = acc_distance[i] + v_max_reached[i] * time_since_new_phase - (acc[i] / 2.0f) * time_since_new_phase * time_since_new_phase;
 			}
 
 			if (is_step_pin_active[i]) {
@@ -284,13 +282,16 @@ void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 				is_step_pin_active[i] = 0;
 			}
 
-			if (uint32_t(s[i] / displacement_per_microstep[i]) - steps_done[i] != 0) {
+			else if (uint32_t(s[i] / displacement_per_microstep[i]) - steps_done[i] != 0) {
 				HAL_GPIO_WritePin(step_ports[i], step_pins[i], GPIO_PIN_SET);
 				steps_done[i]++;
 				is_step_pin_active[i] = 1;
 
 				if (steps_done[i] == required_steps[i] >> 1) {
-					ellapsed_time = 0;
+					move_phase[i]++;
+					acc_distance[i] = s[i];
+					accel_time[i] = total_ellapsed_time;
+					v_max_reached[i] = acc[i] * total_ellapsed_time;
 				}
 				if (steps_done[i] == required_steps[i]) {
 					required_steps[i] = 0;
@@ -337,7 +338,6 @@ void reset_motor_trapezoid_params(uint32_t* step_num, float* accel, float acc_ti
 	motor_move_type = LINEAR;
 	tick_num = 0;
 	are_steps_done = 0;	//false
-	ellapsed_time = 0;
 	for (uint32_t i = 0; i < NUM_OF_AXES; i++) {
 		xSemaphoreTake(sem_is_moving, 1);
 		if (step_num[i] > 0) {
@@ -355,7 +355,6 @@ void reset_motor_trapezoid_params(uint32_t* step_num, float* accel, float acc_ti
 		xSemaphoreGive(sem_is_moving);
 
 		full_distance[i] = full_dist[i];
-		accel_time = acc_time;
 		const_speed_time = const_time;
 
 		steps_done[i] = 0;
@@ -370,14 +369,14 @@ void reset_motor_trapezoid_params(uint32_t* step_num, float* accel, float acc_ti
 	}
 }
 
-void callback_motor_trapezoid_acc(TIM_HandleTypeDef *htim) {
+/*void callback_motor_trapezoid_acc(TIM_HandleTypeDef *htim) {
 	uint32_t end_time;
 	tick_num++;
 	uint32_t start_time = TIM16->CNT;
 
 	total_ellapsed_time += time_delay;
 	section_ellapsed_time += time_delay;
-	float section_ellapsed_time_squared = ellapsed_time * ellapsed_time;
+	//float section_ellapsed_time_squared = ellapsed_time * ellapsed_time;
 
 	uint8_t is_moving_local[NUM_OF_AXES];
 	BaseType_t pxHigherPriorityTaskWoken;
@@ -440,25 +439,24 @@ void callback_motor_trapezoid_acc(TIM_HandleTypeDef *htim) {
 	if( xResult != pdFAIL ) {
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
-}
+}*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 float home_acc;
 float home_max_speed;
-float v[NUM_OF_DESCARTES_AXES];
 float acc_time[NUM_OF_DESCARTES_AXES];
 
-void reset_motors_home_params() {
+void reset_motors_home_params(uint8_t* is_going_home) {
 	motor_move_type = HOME;
 	home_acc = 1;				//mm/s^2
 	home_max_speed = 2;			//mm/s
-	ellapsed_time = 0;
+	total_ellapsed_time = 0;
 	tick_num = 0;
 	for (uint32_t i = 0; i < NUM_OF_DESCARTES_AXES; i++) {
 		v[i] = 0.0f;
 		steps_done[i] = 0;
 		xSemaphoreTake(sem_is_moving, 1);
-		if (((Descartes_Axis*)callback_axes[i])->can_motor_move(((Descartes_Axis*)callback_axes[i])->get_limit_switch_dir())) {
+		if (is_going_home[i] != 0 && ((Descartes_Axis*)callback_axes[i])->can_motor_move(((Descartes_Axis*)callback_axes[i])->get_limit_switch_dir())) {
 			is_moving[i] = 1;
 		} else {
 			is_moving[i] = 0;
@@ -472,8 +470,8 @@ void callback_motors_home(TIM_HandleTypeDef *htim) {
 	tick_num++;
 	uint32_t start_time = TIM16->CNT;
 
-	ellapsed_time += time_delay;
-	float ellapsed_time_squared = ellapsed_time * ellapsed_time;
+	total_ellapsed_time += time_delay;
+	float ellapsed_time_squared = total_ellapsed_time * total_ellapsed_time;
 
 	uint8_t is_moving_local[NUM_OF_DESCARTES_AXES];
 	BaseType_t pxHigherPriorityTaskWoken;
@@ -489,11 +487,11 @@ void callback_motors_home(TIM_HandleTypeDef *htim) {
 		}
 
 		if (v[i] <= home_max_speed) {
-			v[i] = home_acc * ellapsed_time;
+			v[i] = home_acc * total_ellapsed_time;
 			s[i] = (home_acc / 2.0f) * ellapsed_time_squared;
-			acc_time[i] = ellapsed_time;
+			acc_time[i] = total_ellapsed_time;
 		} else {
-			s[i] = (home_acc / 2.0f) * acc_time[i] * acc_time[i] + home_max_speed * (ellapsed_time - acc_time[i]);
+			s[i] = (home_acc / 2.0f) * acc_time[i] * acc_time[i] + home_max_speed * (total_ellapsed_time - acc_time[i]);
 		}
 
 		if (is_step_pin_active[i]) {
