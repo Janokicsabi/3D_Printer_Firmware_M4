@@ -96,8 +96,8 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	sd_card->open_file("3DBenchy");
 	//sd_card->open_file("3DBenchy");
+	sd_card->open_file("square");
 
 	//Init
 
@@ -118,7 +118,7 @@ void task_creator(void* param) {
 	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 0.0, 200.0, 40, 0, LIMIT_SWITCH_NULL_POS, 1000, 7800, 0);
 	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 0.0, 180.0, 40, 1, LIMIT_SWITCH_END_POS, 200, 2400, 0);
 	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 165.0, 8, 0, LIMIT_SWITCH_NULL_POS, 500, 1200, 0);
-	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 7200, 0);
+	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 400, 0);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);
 

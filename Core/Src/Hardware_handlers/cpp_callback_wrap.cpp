@@ -215,10 +215,10 @@ void reset_motor_linear_acc_params(uint32_t* step_num, float* accel, uint8_t* mo
 	}
 }
 
-uint64_t asd;
+uint64_t asd = 0;
 uint32_t worst_time = 0;
 
-void callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
+void __attribute__((optimize("O3"))) callback_motor_linear_acc(TIM_HandleTypeDef *htim) {
 	uint32_t end_time;
 	tick_num++;
 	uint32_t start_time = TIM16->CNT;

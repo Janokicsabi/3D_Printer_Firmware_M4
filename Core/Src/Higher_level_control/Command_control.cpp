@@ -50,6 +50,7 @@ void task_command_control(void* param) {
 	while(1) {
 		EventBits_t command_read_state =  xEventGroupGetBits(event_command_read_ready);
 		if (command_read_state & COMMAND_READ_FINISHED != 0 && uxQueueSpacesAvailable(queue_command) == MESSAGE_QUEUE_SIZE) {
+			EventBits_t command_status = xEventGroupWaitBits(command_state, READY_FOR_NEXT_COMMAND, pdFALSE, pdFALSE, portMAX_DELAY);
 			xEventGroupSetBits(command_state, ALL_COMMANDS_EXECUTED);
 			xTaskCreate(task_print_finished_final_steps, "FINAL_TASK", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 			vTaskDelete(NULL);
