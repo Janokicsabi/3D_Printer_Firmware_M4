@@ -17,9 +17,11 @@ extern EventGroupHandle_t event_command_read_ready;
 static char full_command_line[MAX_COMMAND_LENGTH];
 
 
-void task_fill_message_queue(void* sd_card) {
+void task_g_code_interpreter(void* sd_card) {
 	while(1) {
+		//Check for the eof (end of file) character
 		if (f_eof(((SD_card*)sd_card)->get_file()) != 0) {
+			//It reached the end of file, no more instructions remain
 			xEventGroupSetBits(event_command_read_ready, COMMAND_READ_FINISHED);
 			vTaskDelete(NULL);
 		}

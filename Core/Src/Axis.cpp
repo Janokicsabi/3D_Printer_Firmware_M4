@@ -25,10 +25,15 @@ Axis::~Axis() {
 
 }
 
-const uint32_t Axis::calculate_step_num(float new_pos) {
+const uint32_t Axis::calculate_step_num(float new_pos, float* actual_new_pos) {
 	new_pos = saturate_position(new_pos);
-	float distance = fabs(new_pos - this->pos_in_ws_frame);
-	uint32_t step_num = (uint32_t)round(distance / this->displacement_per_microstep);
+	float signed_distance = new_pos - this->pos_in_ws_frame;
+	uint32_t step_num = (uint32_t)round(fabs(signed_distance) / this->displacement_per_microstep);
+	if (signed_distance > 0) {
+		*actual_new_pos = this->pos_in_ws_frame + (step_num * this->displacement_per_microstep);
+	} else {
+		*actual_new_pos = this->pos_in_ws_frame - (step_num * this->displacement_per_microstep);
+	}
 	return step_num;
 }
 
@@ -72,7 +77,8 @@ void Axis::control_axis_pwm(float move_speed, float new_pos, bool is_feedrate_co
 
 	this->motor->set_motor_speed(move_speed, this->displacement_per_microstep);
 	uint8_t dir = this->calculate_dir(new_pos);
-	uint32_t step_num = this->calculate_step_num(new_pos);
+	float actual_new_pos;
+	uint32_t step_num = this->calculate_step_num(new_pos, &actual_new_pos);
 	this->motor->motor_move_const(step_num, dir);
 	update_position(new_pos);
 }

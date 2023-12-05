@@ -128,8 +128,9 @@ void execute_axis_move_command(Command_struct* command) {
 			travel_directions[i] = axes[i]->calculate_dir(axis_params[i]);
 			axes[i]->get_motor()->change_stepper_dir_pin(travel_directions[i]);
 			travel_distances[i] = abs(axis_params[i] - axes[i]->get_axis_pos());
-			step_num_required[i] = axes[i]->calculate_step_num(axis_params[i]);
-			axes[i]->update_position(axis_params[i]);
+			float actual_new_pos;
+			step_num_required[i] = axes[i]->calculate_step_num(axis_params[i], &actual_new_pos);
+			axes[i]->update_position(actual_new_pos);
 		}
 	}
 

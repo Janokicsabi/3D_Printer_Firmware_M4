@@ -26,7 +26,7 @@ public:
 	Axis(Stepper* motor, const float full_rotation_displacement, float max_acc, float max_speed, float max_jerk);
 	virtual ~Axis();
 
-	const uint32_t calculate_step_num(float new_pos);
+	const uint32_t calculate_step_num(float new_pos, float* actual_new_pos);
 	const uint8_t calculate_dir(float new_position);
 	void control_axis_pwm(float move_speed, float new_pos, bool is_feedrate_const);
 

@@ -96,8 +96,8 @@ void task_creator(void* param) {
 	queue_command = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(Command_struct));
 
 	sd_card = new SD_card();
-	//sd_card->open_file("3DBenchy");
-	sd_card->open_file("square");
+	sd_card->open_file("Benchy");
+	//sd_card->open_file("xyz2");
 
 	//Init
 
@@ -115,22 +115,22 @@ void task_creator(void* param) {
 	Limit_switch* limit_Y = new Limit_switch(LIMIT_Y_GPIO_Port, LIMIT_Y_Pin, stepper_Y);
 	Limit_switch* limit_Z = new Limit_switch(LIMIT_Z_GPIO_Port, LIMIT_Z_Pin, stepper_Z);
 	//TODO PARAMÉTEREKET ÁTÍRNI!!!
-	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 0.0, 200.0, 40, 0, LIMIT_SWITCH_NULL_POS, 1000, 7800, 0);
+	Descartes_Axis* axis_X = new Descartes_Axis(stepper_X, limit_X, 0.0, 200.0, 40, 0, LIMIT_SWITCH_NULL_POS, 1000, 6000, 0);
 	Descartes_Axis* axis_Y = new Descartes_Axis(stepper_Y, limit_Y, 0.0, 180.0, 40, 1, LIMIT_SWITCH_END_POS, 200, 2400, 0);
-	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.0, 165.0, 8, 0, LIMIT_SWITCH_NULL_POS, 500, 1200, 0);
+	Descartes_Axis* axis_Z = new Descartes_Axis(stepper_Z, limit_Z, 0.05, 165.0, 8, 0, LIMIT_SWITCH_NULL_POS, 500, 1200, 0);
 	Axis* axis_E = new Axis(stepper_E, 4.637, 2000, 400, 0);
 	Axis* axes[] = {axis_X, axis_Y, axis_Z, axis_E};
 	axis_commands_init(&htim16, axis_X, axis_Y, axis_Z, axis_E);
 
 	//TEMP_CONTROL TODO visszaírni a tolerance-t
-	hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 2.0, true);
-	bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 1.0, false);
+	hotend_heater = new Temp_controller(HOTEND_GPIO_Port, HOTEND_Pin, &htim5, TIM_CHANNEL_1, 3.33, 0.0778, 42.86, 1.0, true);
+	bed_heater = new Temp_controller(BED_GPIO_Port, BED_Pin, &htim1, TIM_CHANNEL_1, 12.47, 0.3704, 40.9, 0.5, false);
 	init_cpp_callback_wrap((void**)axes, (void*)hotend_heater, (void*)bed_heater, (void*)fan_part_cooling);
 	init_thermistor(&hadc1, &hadc2);
 	temp_commands_init(hotend_heater, bed_heater, fan_hotend);
 
 	//TEST GCode reader & RTOS queue
-	xTaskCreate(task_fill_message_queue, "G_CODE_READER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
+	xTaskCreate(task_g_code_interpreter, "G_CODE_INTERPRETER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
 	xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
 
 	//Filamnet test
