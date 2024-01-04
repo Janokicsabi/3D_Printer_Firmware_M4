@@ -13,7 +13,7 @@ using namespace std;
 
 #include "sd_card.h"
 #include "task_creator.h"
-#include "Motor.h"
+#include "Stepper.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -21,7 +21,7 @@ using namespace std;
 #include "semphr.h"
 
 
-void task_fill_message_queue(void* sd_card);
+void task_g_code_interpreter(void* sd_card);
 
 
 #endif /* SRC_G_CODE_COMMAND_H_ */

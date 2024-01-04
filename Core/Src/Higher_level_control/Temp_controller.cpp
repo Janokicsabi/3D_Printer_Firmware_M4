@@ -9,7 +9,8 @@
 #include "thermistor.h"
 #include <algorithm>
 
-float global_temp_celsius = 0.0f;
+float global_temp_hotend = 0.0f;
+float global_temp_bed = 0.0f;
 float global_duty = 0.0f;
 bool global_is_goal = false;
 
@@ -42,8 +43,12 @@ Temp_controller::~Temp_controller() {
 
 float Temp_controller::compute_PI_controller() {
 	float err = goal_temp - current_temp_celsius;
-	integral_sum += err;
-    float new_duty_cycle = (float)(Kp * err + (Ki / Ti_PI) * integral_sum);
+
+	if (duty_cycle > 0 && duty_cycle < 100) {
+		integral_sum += err;
+	}
+
+	float new_duty_cycle = (float)(Kp * err + (Ki / Ti_PI) * integral_sum);
 
     if (new_duty_cycle > 100) {
     	new_duty_cycle = 100.0f;
@@ -169,6 +174,10 @@ void task_hotend_control(void* param) {
 		uint16_t current_temp_adc = get_last_hotend_temp_adc();
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
+		//TODO Majd eltávolítani
+		global_temp_hotend = current_temp_celsius;
+		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
+
 		if (current_temp_celsius > MAX_GOAL_TEMP) {
 			hotend_controller->heater_timer_stop();
 			while (current_temp_celsius > MAX_GOAL_TEMP) {
@@ -179,6 +188,8 @@ void task_hotend_control(void* param) {
 
 		hotend_controller->set_current_temp_celius(current_temp_celsius);
 		float new_duty_cycle = hotend_controller->compute_PI_controller();
+		//TODO majd eltávlít
+		global_duty = new_duty_cycle;
 		hotend_controller->set_duty_cycle(new_duty_cycle);
 		vTaskDelay(100);
 	}
@@ -191,7 +202,7 @@ void task_bed_control(void* param) {
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
 		//TODO Majd eltávolítani
-		global_temp_celsius = current_temp_celsius;
+		global_temp_bed = current_temp_celsius;
 		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
 
 		if (current_temp_celsius > MAX_GOAL_TEMP) {

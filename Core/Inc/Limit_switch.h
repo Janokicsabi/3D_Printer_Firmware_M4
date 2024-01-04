@@ -8,20 +8,20 @@
 #ifndef SRC_HARDWARE_HANDLERS_LIMITSWITCH_H_
 #define SRC_HARDWARE_HANDLERS_LIMITSWITCH_H_
 
+#include <Stepper.h>
 #include "main.h"
 
-#include <Motor.h>
 
 
 class Limit_switch {
 private:
 	GPIO_TypeDef* switch_port;
 	uint16_t switch_pin;
-	Motor* motor;
+	Stepper* motor;
 
 public:
 	Limit_switch();
-	Limit_switch(GPIO_TypeDef* switch_port, uint16_t switch_pin, Motor* motor);
+	Limit_switch(GPIO_TypeDef* switch_port, uint16_t switch_pin, Stepper* motor);
 	virtual ~Limit_switch();
 
 	bool is_switch_pressed();

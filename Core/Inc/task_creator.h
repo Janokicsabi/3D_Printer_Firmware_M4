@@ -22,10 +22,14 @@
 #define TASK_SMALL_STACK_SIZE	128
 
 #define NUM_OF_AXES				4		//X+Y+Z+E
+#define NUM_OF_DESCARTES_AXES	3		//X+Y+Z
 
-#define MESSAGE_QUEUE_SIZE		20
+#define MESSAGE_QUEUE_SIZE		50
 
 #define READY_FOR_NEXT_COMMAND		(1 << 0)
+#define ALL_COMMANDS_EXECUTED		(1 << 1)
+
+#define COMMAND_READ_FINISHED		(1 << 0)
 
 #define MOTOR_X_FINISHED	(1 << 0)
 #define MOTOR_Y_FINISHED	(1 << 1)
