@@ -88,7 +88,6 @@ void MotorPWM::change_motor_dir_pin(uint8_t new_dir) {
 //@brief	This function calculates the required time delay between steps,
 //			so the printer can move continuously with the required speed
 //@param	move_speed	The required travelling speed [mm/min]
-//TODO: Nem itt kellene a prescaler-t állítani, valahogy kiszervez függvénybe vagy ilyenek
 const uint32_t MotorPWM::calculate_motor_timer_period_from_speed(uint32_t move_speed, float one_step_displacement) {
 	uint32_t timer_clk_freq = HAL_RCC_GetPCLK2Freq();	//[Hz]
 	uint32_t maxTimerValue = this->timer->Instance->ARR;
@@ -109,9 +108,6 @@ const uint32_t MotorPWM::calculate_motor_timer_period_from_speed(uint32_t move_s
 	return motor_timer_period;
 }
 
-//TODO: Ahol nincs hardware PWM ott szoftveres kell
-//TODO: Megnézni, hogy ez jól frissíti-e a Timer period-ot. Ha nem, akkor USER_CONSTANT kell!!!
-//Ha nem jó a CCR1 beállítás, akkor: __HAL_TIM_SET_COMPARE();
 void MotorPWM::set_motor_timer_period(uint32_t timer_period) {
 	this->timer->Init.Period = timer_period;
 
