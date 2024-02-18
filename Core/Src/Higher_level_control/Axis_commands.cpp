@@ -40,7 +40,6 @@ extern EventGroupHandle_t command_state;
 
 
 void axis_commands_init(TIM_HandleTypeDef* timer, Descartes_Axis* axis_x, Descartes_Axis* axis_y, Descartes_Axis* axis_z, Axis* axis_e) {
-	//TODO Átgondolni, hogy ez itt legyen-e
 	Stepper::enable_steppers();
 	current_feedrate = 1.0f;
 
