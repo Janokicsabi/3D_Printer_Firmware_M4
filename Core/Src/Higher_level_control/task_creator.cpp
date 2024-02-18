@@ -54,7 +54,6 @@ Temp_controller* bed_heater;
 Fan* fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
 Fan* fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin, &htim3, TIM_CHANNEL_1);
 
-
 //Semaphores
 SemaphoreHandle_t temp_adc_sem;
 SemaphoreHandle_t duty_cycle_sem;
@@ -67,7 +66,6 @@ EventGroupHandle_t event_command_read_ready;
 //Queues
 xQueueHandle queue_command;
 
-//TODO TEST
 float current_temp_bed = 0.0f;
 
 
@@ -97,10 +95,8 @@ void task_creator(void* param) {
 
 	sd_card = new SD_card();
 	sd_card->open_file("Benchy");
-	//sd_card->open_file("xyz2");
 
 	//Init
-
 	fan_hotend = new Fan(FAN_HOTEND_GPIO_Port, FAN_HOTEND_Pin);
 	fan_part_cooling = new Fan(FAN_PARTCOOLING_GPIO_Port, FAN_PARTCOOLING_Pin, &htim3, TIM_CHANNEL_1);
 	fan_commands_init(fan_hotend, fan_part_cooling);
@@ -132,28 +128,4 @@ void task_creator(void* param) {
 	//TEST GCode reader & RTOS queue
 	xTaskCreate(task_g_code_interpreter, "G_CODE_INTERPRETER", TASK_MID_STACK_SIZE, (void*)sd_card, TASK_LOW_PRIO, NULL);
 	xTaskCreate(task_command_control, "COMMAND_RECEIVER", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
-
-	//Filamnet test
-	//fan_hotend->turn_on_fan();
-	//filament_test(NULL);
-
-	//TEST FAN
-	/*char read_instruction[30] = "M106 S229.5\n";
-	Command* c = new Command();
-	Command_struct* p_p;
-	c->set_code_and_param_string(read_instruction);
-	c->extract_params_from_command_string();
-	p_p = c->get_params();
-	execute_M106(p_p);*/
-
-	/*
-	//Tasks
-	xTaskCreate(task_temp_log, "TEMP_LOG_TASK", TASK_MID_STACK_SIZE, NULL, TASK_LOW_PRIO, NULL);
-	xTaskCreate(task_temp_read, "TEMP_READ_TASK", TASK_MID_STACK_SIZE, NULL, TASK_MID_PRIO, NULL);
-	xTaskCreate(task_temp_control, "TEMP_CONTROL_TASK", TASK_MID_STACK_SIZE, NULL, TASK_HIGH_PRIO, NULL);
-
-	xTaskCreate(task_fill_message_queue, "FILL_QUEUE_TASK", TASK_MID_STACK_SIZE, sd_card, TASK_LOW_PRIO, NULL);
-	//TODO Visszatenni az alábbi sort
-	//xTaskCreate(task_motor_control, "MOTOR_CONTROL_TASK", TASK_MID_STACK_SIZE, NULL, TASK_HIGH_PRIO, NULL);
-	 */
 }
