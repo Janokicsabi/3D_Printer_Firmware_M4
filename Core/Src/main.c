@@ -81,7 +81,6 @@ void StartDefaultTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//TODO REMOVE, TEST ONLY
 extern EventGroupHandle_t event_test;
 /* USER CODE END 0 */
 
