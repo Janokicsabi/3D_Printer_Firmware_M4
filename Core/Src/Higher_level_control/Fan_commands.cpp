@@ -24,7 +24,6 @@ void fan_commands_init(Fan* hotend, Fan* part_cooling) {
 	xEventGroupSetBits(command_state, READY_FOR_NEXT_COMMAND);
 }
 
-//TODO Itt a duty cycle-t is kellene tudni állítani, ha belefér
 void execute_M106(Command_struct* command) {
 	//Set fan speed
 	if (command->s != INVALID_COMMAND_PARAM) {
