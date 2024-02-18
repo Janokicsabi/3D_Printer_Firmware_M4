@@ -95,7 +95,6 @@ void Temp_controller::set_goal_temp(float new_goal_temp) {
 	xSemaphoreGive(goal_temp_sem);
 }
 
-//TODO: Ezt itt megnézni, kezelni, miért ISR?
 float Temp_controller::get_goal_temp() {
 	uint8_t tmp = 0;
 	xSemaphoreTakeFromISR(duty_cycle_sem, NULL);
@@ -119,7 +118,6 @@ float Temp_controller::get_current_temp_celius() {
 	return this->current_temp_celsius;
 }
 
-//TODO szemaforral védeni a last_measured_temps tömböt!!!
 bool Temp_controller::is_goal_temp_reached() {
 	xSemaphoreTake(sem_temp_array, 0);
 	for (uint32_t i = 0; i < TEMP_ARRAY_SIZE; i++) {
@@ -174,7 +172,6 @@ void task_hotend_control(void* param) {
 		uint16_t current_temp_adc = get_last_hotend_temp_adc();
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
-		//TODO Majd eltávolítani
 		global_temp_hotend = current_temp_celsius;
 		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
 
@@ -188,7 +185,6 @@ void task_hotend_control(void* param) {
 
 		hotend_controller->set_current_temp_celius(current_temp_celsius);
 		float new_duty_cycle = hotend_controller->compute_PI_controller();
-		//TODO majd eltávlít
 		global_duty = new_duty_cycle;
 		hotend_controller->set_duty_cycle(new_duty_cycle);
 		vTaskDelay(100);
@@ -201,7 +197,6 @@ void task_bed_control(void* param) {
 		uint16_t current_temp_adc = get_last_bed_temp_adc();
 		float current_temp_celsius = convert_temperature(current_temp_adc);
 
-		//TODO Majd eltávolítani
 		global_temp_bed = current_temp_celsius;
 		global_is_goal = ((Temp_controller*)param)->is_goal_temp_reached();
 
@@ -215,7 +210,7 @@ void task_bed_control(void* param) {
 
 		bed_controller->set_current_temp_celius(convert_temperature(current_temp_adc));
 		float new_duty_cycle = bed_controller->compute_PI_controller();
-		//TODO majd eltávlít
+		
 		global_duty = new_duty_cycle;
 		bed_controller->set_duty_cycle(new_duty_cycle);
 		vTaskDelay(100);
