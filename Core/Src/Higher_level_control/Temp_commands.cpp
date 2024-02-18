@@ -65,7 +65,6 @@ void execute_M190(Command_struct* command) {
 	xTaskCreate(task_wait_for_temp_to_reach, "TEMP_REACH_BED", TASK_SMALL_STACK_SIZE, (void*)bed_heater, TASK_LOW_PRIO, NULL);
 }
 
-//TODO Azt is meg lehetne csinálni, hogy a Task-ot suspendeli, illetve folytatja
 void start_temperature_control(Temp_controller* heater, Command_struct* command) {
 	if (command->s != INVALID_COMMAND_PARAM) {
 		float goal_temp = command->s;
